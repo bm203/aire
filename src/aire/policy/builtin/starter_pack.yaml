@@ -28,7 +28,7 @@ policies:
     violation: >-
       payload["gen_ai.tool.name"] in params.review_required_tools
       && !("human_approved" in payload)
-    framework_refs: ["EU-AI-ACT:Art.14", "ISO42001:A.9.4", "NIST-AI-RMF:GOVERN-3.2"]
+    framework_refs: ["EU-AI-ACT:Art.14", "NIST-AI-RMF:GOVERN-3.2", "OWASP-LLM:LLM06"]
 
   - id: MODEL_ALLOWLIST
     description: Only models from the organization's approved model inventory may be called.
@@ -37,7 +37,7 @@ policies:
     params:
       allowed_models: ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5"]
     violation: '!(payload["gen_ai.request.model"] in params.allowed_models)'
-    framework_refs: ["EU-AI-ACT:Art.11", "ISO42001:A.6.2", "NIST-AI-RMF:MAP-1.6"]
+    framework_refs: ["EU-AI-ACT:Art.11", "NIST-AI-RMF:GOVERN-1.6", "OWASP-LLM:LLM03"]
 
   - id: SESSION_ATTRIBUTION
     description: Every AI interaction must be attributable to a session for traceability.
@@ -45,4 +45,4 @@ policies:
     applies_to: [llm.request, llm.response, tool.call, memory.write]
     verdict_on_violation: warn
     violation: 'event.session_id == "unattributed"'
-    framework_refs: ["EU-AI-ACT:Art.12", "ISO42001:A.7.5", "NIST-AI-RMF:MEASURE-2.7"]
+    framework_refs: ["EU-AI-ACT:Art.12", "ISO42001:A.7.5", "ISO42001:A.6.2.8"]

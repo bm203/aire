@@ -1,0 +1,21 @@
+# ISO/IEC 42001:2023 — AI management systems, Annex A controls.
+# Titles only (the standard's text is proprietary); titles verified against
+# published Annex A control lists. Note: ISO/IEC 42001 Annex A has no
+# dedicated data-retention/disposal control — retention findings cite the
+# EU AI Act and NIST AI RMF instead.
+framework: ISO42001
+name: "ISO/IEC 42001:2023 (AI management systems), Annex A"
+url: https://www.iso.org/standard/42001
+controls:
+  "A.5.4":
+    title: "Assessing AI system impact on individuals or groups of individuals"
+  "A.6.2.4":
+    title: "AI system verification and validation"
+  "A.6.2.8":
+    title: "AI system recording of event logs"
+  "A.7.4":
+    title: "Quality of data for AI systems"
+  "A.7.5":
+    title: "Data provenance"
+  "A.9.4":
+    title: "Intended use of the AI system"

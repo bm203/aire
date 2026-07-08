@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ report.title }}</title>
+<style>
+  :root { color-scheme: light; }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+         margin: 2rem auto; max-width: 62rem; padding: 0 1rem; color: #1a1f24; }
+  h1 { font-size: 1.6rem; border-bottom: 3px solid #1a1f24; padding-bottom: .4rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; }
+  code { background: #f2f4f6; padding: .1em .35em; border-radius: 4px;
+         font-size: .85em; word-break: break-all; }
+  table { border-collapse: collapse; width: 100%; margin: .8rem 0; font-size: .92em; }
+  th, td { border: 1px solid #d5dbe0; padding: .45rem .6rem; text-align: left;
+           vertical-align: top; }
+  th { background: #f2f4f6; }
+  .meta { color: #5a656e; font-size: .9em; }
+  .banner { padding: .7rem 1rem; border-radius: 6px; font-weight: 600; margin: 1rem 0; }
+  .ok { background: #e6f4ea; border: 1px solid #34a853; }
+  .bad { background: #fdecea; border: 1px solid #d93025; }
+  .sev { font-weight: 700; text-transform: uppercase; font-size: .8em;
+         padding: .1em .5em; border-radius: 4px; white-space: nowrap; }
+  .sev-critical { background: #7a0916; color: #fff; }
+  .sev-high { background: #d93025; color: #fff; }
+  .sev-medium { background: #f5a623; color: #1a1f24; }
+  .sev-low { background: #cfe3f7; color: #1a1f24; }
+  .sev-info, .sev-none { background: #e8eaed; color: #1a1f24; }
+  .risk { font-size: 1.05em; }
+  footer { margin-top: 3rem; color: #5a656e; font-size: .85em;
+           border-top: 1px solid #d5dbe0; padding-top: .8rem; }
+</style>
+</head>
+<body>
+<h1>{{ report.title }}</h1>
+<p class="meta">
+  Generated {{ report.generated_at }} by aire {{ report.aire_version }} ·
+  evidence store <code>{{ report.store_path }}</code>
+  {% if report.session_filter %} · session filter <code>{{ report.session_filter }}</code>{% endif %}
+  · {{ report.total_events }} event(s) in scope
+</p>
+
+{% if report.chain.ok %}
+<div class="banner ok">Evidence chain INTACT — {{ report.chain.events_verified }} event(s) verified</div>
+{% else %}
+<div class="banner bad">Evidence chain BROKEN at seq {{ report.chain.first_bad_seq }} —
+  {{ report.chain.reason }} · findings below cannot be relied upon until investigated</div>
+{% endif %}
+
+<p class="risk">Overall risk:
+  <span class="sev sev-{{ report.overall_risk_level.value }}">{{ report.overall_risk_level.value }}</span>
+  (score {{ report.overall_risk_score }})
+  {% if report.severity_totals %}
+    · findings by severity:
+    {% for sev, count in report.severity_totals | dictsort %}{{ sev }}: {{ count }}{{ ", " if not loop.last }}{% endfor %}
+  {% else %} · no findings{% endif %}
+</p>
+
+{% for session in report.sessions %}
+<h2>Session <code>{{ session.session_id }}</code> —
+  <span class="sev sev-{{ session.risk_level.value }}">{{ session.risk_level.value }}</span>
+  (score {{ session.risk_score }})</h2>
+<table>
+  <thead><tr>
+    <th>Severity</th><th>Origin</th><th>Finding</th><th>Evidence</th><th>Framework citations</th>
+  </tr></thead>
+  <tbody>
+  {% for f in session.findings %}
+    <tr>
+      <td><span class="sev sev-{{ f.severity.value }}">{{ f.severity.value }}</span>
+          {% if f.verdict %}<br><span class="meta">[{{ f.verdict }}]</span>{% endif %}</td>
+      <td><code>{{ f.origin }}</code></td>
+      <td>{{ f.summary }}</td>
+      <td>
+        {% if f.source_event_ids %}
+          {% for eid in f.source_event_ids %}
+            <code>{{ eid }}</code><br>
+            <span class="meta">sha256 {{ f.source_event_hashes[loop.index0][:16] }}…</span><br>
+          {% endfor %}
+        {% else %}
+          <code>{{ f.record_event_id }}</code>
+        {% endif %}
+      </td>
+      <td>
+        {% for c in f.citations %}
+          {{ c.framework }} <strong>{{ c.control_id }}</strong> — {{ c.title }}{{ "<br>" | safe if not loop.last }}
+        {% endfor %}
+        {% if f.unresolved_refs %}
+          <br><span class="meta">⚠ unresolved refs: {{ f.unresolved_refs | join(", ") }}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No findings recorded. Run <code>aire evaluate</code> and <code>aire detect</code> before reporting.</p>
+{% endfor %}
+
+{% if report.recommendations %}
+<h2>Recommendations</h2>
+<ul>
+  {% for r in report.recommendations %}<li>{{ r }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<footer>
+  Findings are statements of detected conditions with evidence pointers — not a
+  compliance certification. Evidence event ids and SHA-256 hashes refer to the
+  append-only, hash-chained store; verify integrity with <code>aire verify</code>.
+  This document is self-contained (no scripts, no external resources).
+</footer>
+</body>
+</html>

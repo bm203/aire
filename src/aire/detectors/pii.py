@@ -26,7 +26,7 @@ _FRAMEWORK_REFS = [
     "EU-AI-ACT:Art.10",
     "OWASP-LLM:LLM02",
     "NIST-AI-RMF:MEASURE-2.10",
-    "ISO42001:A.7.4",
+    "ISO42001:A.5.4",
 ]
 
 

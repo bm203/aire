@@ -1,0 +1,16 @@
+# NIST AI Risk Management Framework 1.0 (NIST AI 100-1) subcategories.
+# Texts verified verbatim against the AI RMF Core (airc.nist.gov).
+framework: NIST-AI-RMF
+name: "NIST AI Risk Management Framework 1.0"
+url: https://airc.nist.gov/airmf-resources/airmf/
+controls:
+  "GOVERN-1.6":
+    title: "Mechanisms are in place to inventory AI systems and are resourced according to organizational risk priorities"
+  "GOVERN-3.2":
+    title: "Policies and procedures are in place to define and differentiate roles and responsibilities for human-AI configurations and oversight of AI systems"
+  "MANAGE-3.1":
+    title: "AI risks and benefits from third-party resources are regularly monitored, and risk controls are applied and documented"
+  "MEASURE-2.7":
+    title: "AI system security and resilience — as identified in the MAP function — are evaluated and documented"
+  "MEASURE-2.10":
+    title: "Privacy risk of the AI system — as identified in the MAP function — is examined and documented"

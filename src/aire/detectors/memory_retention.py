@@ -45,10 +45,10 @@ from aire.detectors.base import Detector, Finding
 from aire.detectors.pii import PIIScanner
 from aire.store import EvidenceStore
 
-_REFS_DELETION = ["EU-AI-ACT:Art.10", "ISO42001:A.7.6", "OWASP-LLM:LLM02"]
-_REFS_RETENTION = ["EU-AI-ACT:Art.10", "ISO42001:A.7.6"]
-_REFS_PII = ["EU-AI-ACT:Art.10", "OWASP-LLM:LLM02", "ISO42001:A.7.4"]
-_REFS_XSESSION = ["OWASP-LLM:LLM02", "EU-AI-ACT:Art.12"]
+_REFS_DELETION = ["EU-AI-ACT:Art.10", "NIST-AI-RMF:MEASURE-2.10", "OWASP-LLM:LLM02"]
+_REFS_RETENTION = ["EU-AI-ACT:Art.10", "NIST-AI-RMF:MEASURE-2.10"]
+_REFS_PII = ["EU-AI-ACT:Art.10", "OWASP-LLM:LLM02", "ISO42001:A.5.4"]
+_REFS_XSESSION = ["OWASP-LLM:LLM02", "EU-AI-ACT:Art.10"]
 
 _UNATTRIBUTED = "unattributed"
 

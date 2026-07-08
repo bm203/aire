@@ -1,0 +1,24 @@
+# EU Artificial Intelligence Act — Regulation (EU) 2024/1689.
+# Article titles verified against the regulation's table of contents.
+framework: EU-AI-ACT
+name: "EU AI Act (Regulation (EU) 2024/1689)"
+url: https://artificialintelligenceact.eu/
+controls:
+  "Art.10":
+    title: "Data and data governance"
+    url: https://artificialintelligenceact.eu/article/10/
+  "Art.11":
+    title: "Technical documentation"
+    url: https://artificialintelligenceact.eu/article/11/
+  "Art.12":
+    title: "Record-keeping"
+    url: https://artificialintelligenceact.eu/article/12/
+  "Art.13":
+    title: "Transparency and provision of information to deployers"
+    url: https://artificialintelligenceact.eu/article/13/
+  "Art.14":
+    title: "Human oversight"
+    url: https://artificialintelligenceact.eu/article/14/
+  "Art.15":
+    title: "Accuracy, robustness and cybersecurity"
+    url: https://artificialintelligenceact.eu/article/15/

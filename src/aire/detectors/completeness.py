@@ -18,7 +18,7 @@ from aire.core.types import Severity
 from aire.detectors.base import Detector, Finding
 from aire.store import EvidenceStore
 
-_FRAMEWORK_REFS = ["EU-AI-ACT:Art.12", "ISO42001:A.7.5", "NIST-AI-RMF:MEASURE-2.7"]
+_FRAMEWORK_REFS = ["EU-AI-ACT:Art.12", "ISO42001:A.6.2.8"]
 
 
 class CompletenessDetector(Detector):

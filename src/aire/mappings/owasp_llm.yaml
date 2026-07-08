@@ -1,0 +1,17 @@
+# OWASP Top 10 for LLM Applications — 2025 edition numbering.
+framework: OWASP-LLM
+name: "OWASP Top 10 for LLM Applications (2025)"
+url: https://genai.owasp.org/llm-top-10/
+controls:
+  "LLM01":
+    title: "Prompt Injection"
+    url: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  "LLM02":
+    title: "Sensitive Information Disclosure"
+    url: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  "LLM03":
+    title: "Supply Chain"
+    url: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  "LLM06":
+    title: "Excessive Agency"
+    url: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
