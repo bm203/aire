@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aire"
+version = "0.1.0"
+description = "AI Runtime Evidence Engine — observe-only audit evidence collection, policy evaluation, and framework-mapped audit reports for AI applications"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+keywords = ["ai-governance", "audit", "compliance", "llm", "eu-ai-act", "evidence"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: System :: Monitoring",
+]
+dependencies = [
+  "pydantic>=2.7",
+  "typer>=0.12",
+  "python-ulid>=2.7",
+  "pyyaml>=6.0",
+  "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+# Collectors are optional so the core stays lean; install what your app uses.
+anthropic = ["anthropic>=0.40"]
+langgraph = ["langgraph>=0.2", "langgraph-checkpoint-sqlite>=2.0"]
+pii = ["presidio-analyzer>=2.2"]
+policy = ["cel-python>=0.2"]
+reports = ["jinja2>=3.1"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[project.scripts]
+aire = "aire.cli:app"
+
+[project.urls]
+Repository = "https://github.com/TBD/aire"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aire"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
