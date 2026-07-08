@@ -29,10 +29,18 @@ dependencies = [
 [project.optional-dependencies]
 # Collectors are optional so the core stays lean; install what your app uses.
 anthropic = ["anthropic>=0.40"]
-langgraph = ["langgraph>=0.2", "langgraph-checkpoint-sqlite>=2.0"]
+# The collector wraps the BaseCheckpointSaver interface, so it works with any
+# LangGraph app; only the checkpoint packages are needed, not full langgraph.
+langgraph = ["langgraph-checkpoint-sqlite>=2.0"]
 pii = ["presidio-analyzer>=2.2"]
 policy = ["cel-python>=0.2"]
 reports = ["jinja2>=3.1"]
+examples = [
+  "anthropic>=0.40",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "langgraph-checkpoint-sqlite>=2.0",
+]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
 
 [project.scripts]
