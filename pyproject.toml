@@ -24,6 +24,8 @@ dependencies = [
   "python-ulid>=2.7",
   "pyyaml>=6.0",
   "structlog>=24.1",
+  # Policy expressions are CEL (industry-standard, in-process) — core, not optional.
+  "cel-python>=0.2",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +35,6 @@ anthropic = ["anthropic>=0.40"]
 # LangGraph app; only the checkpoint packages are needed, not full langgraph.
 langgraph = ["langgraph-checkpoint-sqlite>=2.0"]
 pii = ["presidio-analyzer>=2.2"]
-policy = ["cel-python>=0.2"]
 reports = ["jinja2>=3.1"]
 examples = [
   "anthropic>=0.40",

@@ -1,0 +1,48 @@
+# AIRE starter policy pack.
+#
+# These are templates: copy them into your own policy directory and adapt the
+# `params` blocks to your organization. Expressions are CEL (Common
+# Expression Language) over three variables: `event` (envelope), `payload`
+# (event payload), `params` (this policy's params block). An expression that
+# evaluates true means the policy is VIOLATED.
+#
+# framework_refs are keys into aire's framework mappings (EU AI Act,
+# ISO/IEC 42001, NIST AI RMF, OWASP) — reports resolve them to citations.
+
+policies:
+  - id: TOOL_ALLOWLIST
+    description: Agents may only invoke tools on the organization's approved allowlist.
+    severity: high
+    applies_to: [tool.call]
+    params:
+      allowed_tools: ["lookup_order"]
+    violation: '!(payload["gen_ai.tool.name"] in params.allowed_tools)'
+    framework_refs: ["OWASP-LLM:LLM06", "EU-AI-ACT:Art.14", "NIST-AI-RMF:MANAGE-3.1"]
+
+  - id: TOOL_HUMAN_REVIEW
+    description: High-impact tools require a recorded human approval marker before invocation.
+    severity: critical
+    applies_to: [tool.call]
+    params:
+      review_required_tools: []   # e.g. ["purchase_order", "delete_account"]
+    violation: >-
+      payload["gen_ai.tool.name"] in params.review_required_tools
+      && !("human_approved" in payload)
+    framework_refs: ["EU-AI-ACT:Art.14", "ISO42001:A.9.4", "NIST-AI-RMF:GOVERN-3.2"]
+
+  - id: MODEL_ALLOWLIST
+    description: Only models from the organization's approved model inventory may be called.
+    severity: medium
+    applies_to: [llm.request]
+    params:
+      allowed_models: ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5"]
+    violation: '!(payload["gen_ai.request.model"] in params.allowed_models)'
+    framework_refs: ["EU-AI-ACT:Art.11", "ISO42001:A.6.2", "NIST-AI-RMF:MAP-1.6"]
+
+  - id: SESSION_ATTRIBUTION
+    description: Every AI interaction must be attributable to a session for traceability.
+    severity: low
+    applies_to: [llm.request, llm.response, tool.call, memory.write]
+    verdict_on_violation: warn
+    violation: 'event.session_id == "unattributed"'
+    framework_refs: ["EU-AI-ACT:Art.12", "ISO42001:A.7.5", "NIST-AI-RMF:MEASURE-2.7"]
