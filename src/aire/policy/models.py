@@ -21,14 +21,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from aire.core.events import EventType
+from aire.core.types import Severity
 
-
-class Severity(StrEnum):
-    INFO = "info"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+__all__ = ["Policy", "PolicyResult", "Severity", "Verdict"]
 
 
 class Verdict(StrEnum):

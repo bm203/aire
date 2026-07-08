@@ -115,3 +115,99 @@ def verify(
         err=True,
     )
     raise typer.Exit(code=1)
+
+
+@app.command()
+def detect(
+    db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
+    memory_db: Annotated[
+        Path | None,
+        typer.Option(
+            "--memory-db",
+            help="LangGraph checkpointer DB — enables the memory retention/deletion control "
+            "(opened strictly read-only)",
+        ),
+    ] = None,
+    retention_days: Annotated[
+        float | None,
+        typer.Option("--retention-days", help="Max allowed memory age for the retention check"),
+    ] = None,
+    pii: Annotated[
+        bool, typer.Option("--pii/--no-pii", help="Run the Presidio PII detector")
+    ] = True,
+    pii_model: Annotated[
+        str, typer.Option("--pii-model", help="spaCy model for Presidio")
+    ] = "en_core_web_sm",
+    session_id: Annotated[
+        str | None, typer.Option("--session", help="Only inspect this session's events")
+    ] = None,
+) -> None:
+    """Run detectors over stored evidence; append findings to the chain.
+
+    Always runs prompt-injection and audit-log-completeness detectors. PII
+    (Presidio) runs unless --no-pii or the extra isn't installed. The deep
+    memory retention/deletion control runs when --memory-db is given.
+    """
+    from aire.detectors import CompletenessDetector, DetectorRunner, PromptInjectionDetector
+    from aire.store import EvidenceStore
+
+    if not db.exists():
+        typer.secho(f"error: no such file: {db}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+
+    detectors = [PromptInjectionDetector(), CompletenessDetector()]
+
+    scanner = None
+    if pii:
+        try:
+            from aire.detectors.pii import PIIDetector, PresidioScanner
+
+            scanner = PresidioScanner(model=pii_model)
+            detectors.append(PIIDetector(scanner=scanner))
+        except ImportError:
+            typer.secho(
+                "note: PII detector skipped — install 'aire[pii]' and a spaCy model",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+
+    if memory_db is not None:
+        try:
+            from aire.detectors.memory_retention import MemoryRetentionControl
+
+            detectors.append(
+                MemoryRetentionControl(
+                    memory_db, retention_max_days=retention_days, pii_scanner=scanner
+                )
+            )
+        except ImportError:
+            typer.secho(
+                "note: memory control skipped — install 'aire[langgraph]'",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+
+    store = EvidenceStore(db)
+    try:
+        outcome = DetectorRunner(detectors).run(store, session_id=session_id)
+    finally:
+        store.close()
+
+    typer.echo(
+        f"scanned {outcome.events_scanned} event(s) with "
+        f"{len(detectors)} detector(s): {outcome.counts or 'no findings'}"
+    )
+    palette = {
+        "critical": typer.colors.BRIGHT_RED,
+        "high": typer.colors.RED,
+        "medium": typer.colors.YELLOW,
+        "low": typer.colors.CYAN,
+        "info": typer.colors.WHITE,
+    }
+    for event in outcome.recorded:
+        p = event.payload
+        typer.secho(
+            f"  [{p['severity'].upper()}] {p['detector_id']} session={p['session_id']}",
+            fg=palette.get(p["severity"], typer.colors.WHITE),
+        )
+        typer.echo(f"         {p['summary']}")

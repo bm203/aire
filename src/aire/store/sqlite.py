@@ -64,6 +64,18 @@ class EvidenceStore:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        self._restrict_permissions()
+
+    def _restrict_permissions(self) -> None:
+        """Evidence contains prompts, memory contents, and possibly PII —
+        owner-only access on the DB file and its WAL/SHM sidecars."""
+        for suffix in ("", "-wal", "-shm"):
+            sidecar = Path(str(self.path) + suffix)
+            try:
+                if sidecar.exists():
+                    sidecar.chmod(0o600)
+            except OSError:
+                pass  # best effort; never break the host over perms
 
     def close(self) -> None:
         self._conn.close()
