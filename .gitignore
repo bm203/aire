@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Env / direnv
+.env
+.envrc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local-only docs (never public — see CLAUDE.md doc map)
+CLAUDE.md
+DEVLOG.md
+BUILDPLAN.md
+INFRA.md
+CHEATSHEET.md
+notes/
+
+# Local scratch
+*.local.md
