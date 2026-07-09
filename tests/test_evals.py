@@ -60,6 +60,12 @@ class TestAgentLeakReplay:
         assert any(c.carries_pii for c in channels)
         assert any(not c.carries_pii for c in channels)  # the clean trace
 
+    def test_explicit_missing_data_dir_raises_not_silent_fixture(self, tmp_path):
+        # A mistyped --agentleak-data must fail loudly, never masquerade as a
+        # real run by silently using the synthetic fixture.
+        with pytest.raises(FileNotFoundError):
+            agentleak_eval.load_channels(tmp_path / "nope")
+
     def test_replay_with_fake_scanner_scores_recall(self, store):
         from aire.detectors.pii import PIIDetector, PIIMatch
 

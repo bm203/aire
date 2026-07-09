@@ -67,13 +67,22 @@ def _classify(channel_id: str, channel: dict) -> Channel | None:
 
 
 def load_channels(data_dir: Path | None = None) -> list[Channel]:
-    """Load internal-channel traces, falling back to the CI fixture."""
-    path = None
+    """Load internal-channel traces.
+
+    With no ``data_dir`` the synthetic CI fixture is used. If ``data_dir`` is
+    given it must contain the dataset — a missing file raises rather than
+    silently falling back to the fixture, so a mistyped path can't masquerade
+    as a real run.
+    """
     if data_dir is not None:
-        candidate = Path(data_dir) / "traces_internal_channels.jsonl"
-        if candidate.exists():
-            path = candidate
-    if path is None:
+        path = Path(data_dir) / "traces_internal_channels.jsonl"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"{path} not found — pass the AgentLeak "
+                "agentleak_data/datasets directory, or omit --agentleak-data "
+                "to use the synthetic CI fixture"
+            )
+    else:
         path = _FIXTURE
 
     channels: list[Channel] = []
