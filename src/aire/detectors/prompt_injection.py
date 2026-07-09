@@ -55,6 +55,24 @@ _PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
         ("mode_override", r"(?:developer|god|jailbreak|dan)\s+mode", 0.9),
         ("do_anything_now", r"\bdo\s+anything\s+now\b", 0.9),
         ("fake_control_tokens", r"</?(?:system|assistant)>|\[/?(?:INST|SYSTEM)\]", 0.8),
+        # Fake authoritative context blocks injected into tool/retrieved data.
+        ("fake_framing_tag", r"</?(?:INFORMATION|INSTRUCTIONS?|IMPORTANT|CONTEXT)>", 0.7),
+        # "Before you (can) solve/answer the task … do the following first" —
+        # the injected-precondition preamble common to indirect-injection attacks.
+        (
+            "injected_precondition",
+            r"before you\s+(?:can |could |may )?(?:solve|complete|answer|continue|"
+            r"proceed|finish|respond)\b[^.]{0,80}?"
+            r"(?:do|complete|perform|follow|execute)\s+the\s+following",
+            0.8,
+        ),
+        # Content framed as an authoritative out-of-band message to the model.
+        (
+            "authoritative_message_framing",
+            r"(?:important|urgent)\s+message\s+(?:from|for)\s+(?:me|us|the\s+\w{1,20})"
+            r"[,\s][^.]{0,40}?to you",
+            0.6,
+        ),
         ("exfil_markdown_image", r"!\[[^\]\n]{0,64}\]\(https?://", 0.9),
         (
             "exfil_send_to_url",

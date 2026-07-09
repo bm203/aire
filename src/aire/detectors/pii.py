@@ -142,3 +142,9 @@ def _texts_to_scan(event: AuditEvent):
     elif event.event_type == EventType.MEMORY_WRITE:
         yield from iter_strings(event.payload.get("channel_values"), path="channel_values")
         yield from iter_strings(event.payload.get("writes"), path="writes")
+    elif event.event_type == EventType.TOOL_RESULT:
+        # Data returned into the agent (incl. inter-agent messages) can carry
+        # PII — the internal channel AgentLeak shows output-only audits miss.
+        yield from iter_strings(event.payload.get("content"), path="content")
+    elif event.event_type == EventType.RETRIEVAL_CONTEXT:
+        yield from iter_strings(event.payload, path="payload")
