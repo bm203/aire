@@ -30,6 +30,10 @@ constraint at every level, not a feature.
 - **Crash-safe controls.** A crashing detector becomes a finding ("this
   control did not run — coverage is incomplete"), because silent gaps in an
   audit are worse than reported ones.
+- **Supply-chain hygiene.** Dependencies are pinned and hash-locked
+  (`requirements.lock`), scanned for known vulnerabilities in CI
+  (`pip-audit`), and held to a 14-day maturity cooldown before adoption. See
+  [dependency-management.md](docs/dependency-management.md).
 
 ## Threat model (v1 scope)
 
@@ -41,6 +45,7 @@ constraint at every level, not a feature.
 | AIRE corrupting the host's memory store during audit | Read-only connections, enforced by SQLite |
 | Evidence leaking to other local users | 0600 file permissions on DB + sidecars |
 | PII amplification through findings | Findings carry types/offsets/pointers, not values |
+| Malicious or vulnerable dependency | Hash-pinned lockfile, `pip-audit` in CI, 14-day adoption cooldown |
 
 Out of scope in v1 (roadmap): at-rest encryption of the evidence store,
 remote/append-to-remote evidence sinks, key-managed signing of chain heads,

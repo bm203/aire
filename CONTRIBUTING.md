@@ -21,7 +21,22 @@ pytest          # full suite
 ruff check .    # lint
 ```
 
-Both must be clean. Tests that require an optional dependency skip gracefully
+Both must be clean.
+
+### Changing dependencies
+
+`pyproject.toml` holds flexible ranges; `requirements.lock` is the hash-pinned
+lockfile CI installs from. If you change a dependency, **regenerate the lock**
+in the same PR and respect the 14-day adoption cooldown:
+
+```bash
+pip-compile --all-extras --generate-hashes --strip-extras \
+  --output-file=requirements.lock pyproject.toml
+```
+
+CI verifies the lock is in sync and runs `pip-audit` against it. See
+[docs/dependency-management.md](docs/dependency-management.md) for the full
+strategy, cooldown policy, and validation steps. Tests that require an optional dependency skip gracefully
 when it is absent, so the core suite runs without the extras — but add the
 extras above when working on collectors, the PII detector, or the eval harness.
 

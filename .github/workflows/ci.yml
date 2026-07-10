@@ -33,12 +33,31 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install (core + all extras so the full suite runs)
+      - name: Install dependencies (hash-verified from the lockfile)
+        # Install ONLY from the hash-pinned lock: --require-hashes aborts if
+        # any artifact's hash doesn't match, so CI tests exactly the locked,
+        # audited environment — down to the pinned pip/setuptools themselves.
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[anthropic,langgraph,pii,eval,dev]"
-          # spaCy model for the PII detector / memory control / eval tests
+          pip install --require-hashes -r requirements.lock
+          pip install -e . --no-deps          # the local package; deps already locked
+          # spaCy model: fetched by spaCy's downloader, not pip — the one
+          # un-hashed fetch (see docs/dependency-management.md).
           python -m spacy download en_core_web_sm
+
+      - name: Verify the lockfile is in sync with pyproject.toml
+        # A stale lock (deps changed without recompiling) fails here. Flags
+        # MUST match how the lock is generated (incl. --allow-unsafe) or the
+        # recompile always diffs.
+        run: |
+          pip-compile --all-extras --generate-hashes --strip-extras --allow-unsafe \
+            --output-file=requirements.lock pyproject.toml
+          git diff --exit-code requirements.lock
+
+      - name: Audit dependencies for known vulnerabilities
+        # A pinned package with a known CVE fails the build — the signal to
+        # update (after cooldown) or record a justified exception.
+        # --skip-editable skips the local `aire` package (not on PyPI).
+        run: pip-audit --skip-editable
 
       - name: Lint (ruff)
         run: ruff check .

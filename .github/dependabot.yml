@@ -1,0 +1,31 @@
+# Dependabot configuration — dependency update automation with a cooldown.
+#
+# The cooldown enforces AIRE's 14-day maturity policy in the update workflow:
+# update PRs are only opened for versions that have already been published for
+# at least 14 days, reducing exposure to malicious-then-yanked releases and
+# fresh regressions. See docs/dependency-management.md.
+#
+# NOTE: verify the `cooldown` schema against the current Dependabot
+# configuration reference before relying on it — the feature's options have
+# evolved:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "ci"

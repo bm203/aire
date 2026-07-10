@@ -49,7 +49,16 @@ examples = [
 # (see evals/agentdojo_eval.py) for reproducible numbers, so the package is
 # held to the range that ships it. Bump both together when re-baselining.
 eval = ["agentdojo>=0.1.30,<0.2", "presidio-analyzer>=2.2"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.5",
+  # Supply-chain tooling: pip-tools compiles the hash-pinned lockfile from
+  # this file; pip-audit scans it for known vulnerabilities. See
+  # docs/dependency-management.md.
+  "pip-tools>=7.4",
+  "pip-audit>=2.7",
+]
 
 [project.scripts]
 aire = "aire.cli:app"
