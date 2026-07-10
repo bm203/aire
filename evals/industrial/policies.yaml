@@ -1,0 +1,32 @@
+# Scenario-specific governance policies for the industrial IT/OT workflow.
+# These express clearance-based access control over AI memory — the kind of
+# organizational rule an industrial operator layers on top of the built-in
+# controls. Evaluated by AIRE's CEL policy engine (no code); keys are checked
+# with `in` so events that don't carry clearance metadata simply pass.
+
+policies:
+  - id: OT_CLEARANCE_BOUNDARY
+    description: >-
+      A public-clearance agent must not read memory tagged as restricted
+      (need-to-know boundary between OT/PII data and lower-clearance agents).
+    severity: critical
+    applies_to: [memory.read]
+    params: {}
+    violation: >-
+      ("reader_clearance" in payload) && ("data_sensitivity" in payload)
+      && payload["reader_clearance"] == "public"
+      && payload["data_sensitivity"] == "restricted"
+    framework_refs: ["EU-AI-ACT:Art.10", "NIST-AI-RMF:GOVERN-3.2", "OWASP-LLM:LLM02"]
+
+  - id: OT_SENSITIVE_TO_PUBLIC
+    description: >-
+      Restricted OT data (setpoints, advisories) must not be delivered to a
+      public-clearance consumer via an inter-agent channel.
+    severity: high
+    applies_to: [tool.result]
+    params: {}
+    violation: >-
+      ("consumer_clearance" in payload) && ("data_sensitivity" in payload)
+      && payload["consumer_clearance"] == "public"
+      && payload["data_sensitivity"] == "restricted"
+    framework_refs: ["EU-AI-ACT:Art.10", "OWASP-LLM:LLM02"]

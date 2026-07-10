@@ -26,6 +26,19 @@ python -m evals.run --agentleak-data /tmp/AgentLeak/agentleak_data/datasets
 | **AgentDojo** (arXiv 2406.13352) | `important_instructions` attack rendered per injection-task goal (positives) vs. benign injection-vector texts + user prompts (negatives), replayed as `tool.result` events | prompt-injection precision / recall / F1 / FP-rate, detector latency |
 | **AgentLeak** (arXiv 2602.11510) | internal-channel traces (inter-agent messages, shared memory) replayed as evidence events; ground truth = each channel's `pii_exposed` | internal-channel PII recall, per channel kind; contrast vs. 0% output-only-auditor coverage |
 | **Overhead** | synthetic | evidence-store append latency, report build time |
+| **Industrial IT/OT scenario** (`evals/industrial/`) | deterministic, ground-truth-labeled multi-agent maintenance/operations workflow — clearance-tiered agents with four planted internal-channel conditions (indirect injection via a maintenance-log tool result, PII in shared memory, cross-clearance memory read, unhonored data-erasure) | per-condition detection coverage, event-level precision/recall/F1/FP, contrast vs. 0% output-only-auditor coverage |
+
+Run the industrial scenario (needs the `pii` + `langgraph` extras):
+
+```bash
+python -m evals.industrial.run          # writes evals/industrial/RESULTS.md
+```
+
+It is deterministic (scripted events with known ground truth — no LLM calls),
+so the true/false-positive numbers are reproducible. All data is synthetic
+(no personal data, no secrets, no company names); the PII scanner is tuned to
+a real personal-data entity set (dropping the DATE_TIME/ORGANIZATION/URL noise
+Presidio flags by default).
 
 ## Notes
 
