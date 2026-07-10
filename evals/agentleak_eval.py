@@ -101,6 +101,166 @@ def load_channels(data_dir: Path | None = None) -> list[Channel]:
     return channels
 
 
+# --- Private-vault PII corpus (larger-N recall, complements the 3 traces) ----
+#
+# AgentLeak ships 1000 scenario *definitions*, each with a private_vault of
+# records about people (patient / customer / candidate / employee / client).
+# These are not executed traces, so this is NOT a leakage measurement — it is
+# an honestly-scoped **PII-detection recall** metric: given the sensitive
+# records AgentLeak defines, does AIRE's memory PII detector surface them when
+# they are written to agent memory? Ground truth is field-name based and
+# transparent: a record is PII-positive if it carries any identity field.
+
+_VAULT_FIXTURE = Path(__file__).parent / "fixtures" / "agentleak_vault_records.jsonl"
+_PII_FIELDS = frozenset(
+    {
+        "name",
+        "full_name",
+        "first_name",
+        "last_name",
+        "patient_name",
+        "client_name",
+        "candidate_name",
+        "employee_name",
+        "ssn",
+        "email",
+        "phone",
+        "dob",
+        "address",
+    }
+)
+
+
+@dataclass
+class VaultRecord:
+    scenario_id: str
+    record_type: str
+    text: str
+    has_pii: bool  # ground truth: carries an identity field
+
+
+def load_vault_records(
+    data_dir: Path | None = None, *, limit: int | None = None
+) -> list[VaultRecord]:
+    """Load private-vault records (fixture when no ``data_dir``).
+
+    Uses ``scenarios_base_100.jsonl`` from the dataset. A missing file raises
+    rather than silently using the fixture.
+    """
+    if data_dir is not None:
+        path = Path(data_dir) / "scenarios_base_100.jsonl"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"{path} not found — pass the AgentLeak agentleak_data/datasets "
+                "directory, or omit --agentleak-data to use the synthetic fixture"
+            )
+    else:
+        path = _VAULT_FIXTURE
+
+    records: list[VaultRecord] = []
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        scenario = json.loads(line)
+        sid = str(scenario.get("scenario_id", "?"))
+        for rec in scenario.get("private_vault", {}).get("records", []):
+            fields = rec.get("fields") or {}
+            has_pii = any(k in _PII_FIELDS for k in fields)
+            # Text = the record's field values (what would land in memory).
+            text = " | ".join(f"{k}: {v}" for k, v in fields.items())
+            records.append(
+                VaultRecord(
+                    scenario_id=sid,
+                    record_type=str(rec.get("record_type", "?")),
+                    text=text,
+                    has_pii=has_pii,
+                )
+            )
+            if limit is not None and len(records) >= limit:
+                return records
+    return records
+
+
+@dataclass
+class VaultResult:
+    records_total: int
+    identity_records: int  # records with an explicit identity field (ground-truth positives)
+    identity_detected: int  # of those, how many the detector flagged
+    non_identity_records: int  # records without an explicit identity field
+    non_identity_flagged: int  # of those, how many the detector still flagged (PII in free text)
+    data_source: str
+
+    @property
+    def recall(self) -> float:
+        return self.identity_detected / self.identity_records if self.identity_records else 0.0
+
+    def as_dict(self) -> dict:
+        return {
+            "metric": "private_vault_pii_recall",
+            "note": (
+                "Honestly scoped: PII-detection RECALL over AgentLeak private-vault "
+                "records that carry an explicit identity field (ground truth is "
+                "field-name based). Not precision — the remaining records are not "
+                "reliable PII-free negatives (records are about people; names appear "
+                "in free-text fields too), so records flagged without an identity "
+                "field are reported separately as PII-in-free-text, not as errors."
+            ),
+            "data_source": self.data_source,
+            "records_total": self.records_total,
+            "identity_records": self.identity_records,
+            "identity_detected": self.identity_detected,
+            "recall": round(self.recall, 4),
+            "non_identity_records": self.non_identity_records,
+            "non_identity_flagged_in_free_text": self.non_identity_flagged,
+        }
+
+
+def run_vault_pii(
+    store: EvidenceStore, records: list[VaultRecord], detector: Detector
+) -> VaultResult:
+    """Replay each vault record as a memory.write; score PII-detection recall."""
+    label_by_event: dict[str, VaultRecord] = {}
+    for i, rec in enumerate(records):
+        event = store.append(
+            session_id=f"vault-{rec.scenario_id}-{i}",
+            app="eval.agentleak.vault",
+            event_type=EventType.MEMORY_WRITE,
+            payload={
+                "thread_id": f"vault-{rec.scenario_id}-{i}",
+                "channel_values": {"record": rec.text},
+            },
+        )
+        label_by_event[event.event_id] = rec
+
+    events = list(store.events(event_type=EventType.MEMORY_WRITE))
+    findings = detector.inspect(events, store)
+    flagged = {eid for f in findings for eid in f.source_event_ids}
+
+    identity = identity_hit = non_identity = non_identity_hit = 0
+    for event in events:
+        rec = label_by_event.get(event.event_id)
+        if rec is None:
+            continue
+        hit = event.event_id in flagged
+        if rec.has_pii:
+            identity += 1
+            identity_hit += hit
+        else:
+            non_identity += 1
+            non_identity_hit += hit
+
+    is_fixture = all(r.scenario_id.startswith("SYNTH") for r in records) if records else True
+    return VaultResult(
+        records_total=len(records),
+        identity_records=identity,
+        identity_detected=identity_hit,
+        non_identity_records=non_identity,
+        non_identity_flagged=non_identity_hit,
+        data_source="fixture" if is_fixture else "dataset",
+    )
+
+
 @dataclass
 class AgentLeakResult:
     overall: ConfusionMatrix

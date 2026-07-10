@@ -66,6 +66,37 @@ class TestAgentLeakReplay:
         with pytest.raises(FileNotFoundError):
             agentleak_eval.load_channels(tmp_path / "nope")
 
+    def test_vault_records_load_and_label(self):
+        records = agentleak_eval.load_vault_records()
+        assert len(records) == 6  # 3 synthetic scenarios × 2 records
+        assert sum(r.has_pii for r in records) == 4  # identity-field records
+        assert sum(not r.has_pii for r in records) == 2  # note/dispute records
+
+    def test_vault_missing_data_dir_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            agentleak_eval.load_vault_records(tmp_path / "nope")
+
+    def test_vault_pii_recall_on_fixture(self, store):
+        # Uses the real Presidio scanner (names in free text can't be caught by
+        # a keyword fake). Gated on the pii extra + spaCy model.
+        pytest.importorskip("presidio_analyzer")
+        spacy = pytest.importorskip("spacy")
+        if not spacy.util.is_package("en_core_web_sm"):
+            pytest.skip("spaCy model en_core_web_sm not installed")
+        from aire.detectors.pii import PIIDetector, PresidioScanner
+
+        scanner = PresidioScanner(
+            entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN"]
+        )
+        records = agentleak_eval.load_vault_records()
+        result = agentleak_eval.run_vault_pii(store, records, PIIDetector(scanner=scanner))
+        d = result.as_dict()
+        assert d["data_source"] == "fixture"
+        assert d["identity_records"] == 4
+        assert d["recall"] == 1.0  # every identity record surfaced
+        # the two clean records carry no personal data in any field
+        assert d["non_identity_flagged_in_free_text"] == 0
+
     def test_replay_with_fake_scanner_scores_recall(self, store):
         from aire.detectors.pii import PIIDetector, PIIMatch
 

@@ -43,13 +43,26 @@ def _run_agentdojo() -> dict:
             store.close()
 
 
+# Tuned personal-data entity set (V1 live-validation learning): drop the
+# DATE_TIME / ORGANIZATION / URL noise Presidio flags by default.
+_PII_ENTITIES = [
+    "PERSON",
+    "EMAIL_ADDRESS",
+    "PHONE_NUMBER",
+    "US_SSN",
+    "CREDIT_CARD",
+    "IBAN_CODE",
+    "IP_ADDRESS",
+]
+
+
 def _run_agentleak(data_dir: Path | None) -> dict:
     from evals import agentleak_eval
 
     try:
         from aire.detectors.pii import PIIDetector, PresidioScanner
 
-        detector = PIIDetector(scanner=PresidioScanner())
+        detector = PIIDetector(scanner=PresidioScanner(entities=_PII_ENTITIES))
     except ImportError:
         return {
             "benchmark": "AgentLeak",
@@ -57,12 +70,19 @@ def _run_agentleak(data_dir: Path | None) -> dict:
         }
 
     channels = agentleak_eval.load_channels(data_dir)
+    records = agentleak_eval.load_vault_records(data_dir)
     with tempfile.TemporaryDirectory() as tmp:
         store = EvidenceStore(Path(tmp) / "aleak.db")
+        vault_store = EvidenceStore(Path(tmp) / "aleak_vault.db")
         try:
-            return agentleak_eval.run(store, channels, detector).as_dict()
+            result = agentleak_eval.run(store, channels, detector).as_dict()
+            result["private_vault_pii"] = agentleak_eval.run_vault_pii(
+                vault_store, records, detector
+            ).as_dict()
+            return result
         finally:
             store.close()
+            vault_store.close()
 
 
 def _run_overhead() -> dict:
@@ -154,6 +174,28 @@ def to_markdown(results: dict) -> str:
         for kind, conf in al["by_channel_kind"].items():
             lines.append(f"- `{kind}`: {_fmt_confusion(conf)}")
         lines.append("")
+
+        vault = al.get("private_vault_pii")
+        if vault:
+            lines += [
+                "### Private-vault PII detection (larger-N recall)",
+                "",
+                "Honestly scoped: AgentLeak's 100 base scenarios define private "
+                "vaults of records about people — scenario *definitions*, not "
+                "executed traces. This measures whether AIRE's memory PII detector "
+                "surfaces each record when written to agent memory (**recall**, not "
+                "leakage). Ground truth is field-name based; the detector uses the "
+                "tuned personal-data entity set.",
+                "",
+                f"- Data source: **{vault['data_source']}** · records: {vault['records_total']}",
+                f"- **Recall on identity-field records:** {vault['recall']} "
+                f"({vault['identity_detected']}/{vault['identity_records']})",
+                f"- Records with no explicit identity field flagged for PII in "
+                f"free-text (e.g. a name in a `provider`/`references` field — a strength, "
+                f"not an error): {vault['non_identity_flagged_in_free_text']}/"
+                f"{vault['non_identity_records']}",
+                "",
+            ]
 
     ov = results["overhead"]
     lines += [
