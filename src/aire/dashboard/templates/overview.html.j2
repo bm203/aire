@@ -1,0 +1,50 @@
+{% extends "base.html.j2" %}
+{% block title %}AIRE — {{ report.store_path }}{% endblock %}
+{% block content %}
+<h1>{{ report.title }}</h1>
+<p class="meta">
+  aire {{ report.aire_version }} · store <code>{{ report.store_path }}</code> ·
+  {{ report.total_events }} event(s) · generated {{ report.generated_at }}
+</p>
+
+{% if report.chain.ok %}
+<div class="banner ok">Evidence chain INTACT — {{ report.chain.events_verified }} event(s) verified</div>
+{% else %}
+<div class="banner bad">Evidence chain BROKEN at seq {{ report.chain.first_bad_seq }} —
+  {{ report.chain.reason }} · findings below cannot be relied upon until investigated</div>
+{% endif %}
+
+<p class="risk">Overall risk:
+  <span class="sev sev-{{ report.overall_risk_level.value }}">{{ report.overall_risk_level.value }}</span>
+  (score {{ report.overall_risk_score }})
+  {% if report.severity_totals %}
+    · findings by severity:
+    {% for sev, count in report.severity_totals | dictsort %}{{ sev }}: {{ count }}{{ ", " if not loop.last }}{% endfor %}
+  {% endif %}
+</p>
+
+<h2>Sessions</h2>
+{% if report.sessions %}
+<table>
+  <thead><tr><th>Session</th><th>Risk</th><th>Findings</th></tr></thead>
+  <tbody>
+  {% for session in report.sessions %}
+    <tr>
+      <td><a href="/session?id={{ session.session_id | urlencode }}"><code>{{ session.session_id }}</code></a></td>
+      <td><span class="sev sev-{{ session.risk_level.value }}">{{ session.risk_level.value }}</span>
+          ({{ session.risk_score }})</td>
+      <td>{{ session.findings | length }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No findings recorded yet — run <code>aire evaluate</code> and
+  <code>aire detect</code> against this store first, then reload.</p>
+{% endif %}
+
+{% if report.recommendations %}
+<h2>Recommendations</h2>
+<ul>{% for r in report.recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+{% endif %}
+{% endblock %}

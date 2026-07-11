@@ -19,6 +19,51 @@ def version() -> None:
 
 
 @app.command()
+def dashboard(
+    db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
+    host: Annotated[
+        str, typer.Option("--host", help="Bind address (localhost only unless you know why)")
+    ] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", "-p", help="Port")] = 8787,
+    title: Annotated[str, typer.Option("--title")] = "AIRE Audit Report",
+) -> None:
+    """Serve a local, read-only web dashboard over an evidence store.
+
+    Displays the findings, risk, framework citations, and event timeline that
+    `aire evaluate` / `aire detect` already recorded — it never writes to the
+    store. Binds 127.0.0.1 by default; do not expose it publicly without an
+    authenticating reverse proxy.
+    """
+    try:
+        import uvicorn
+
+        from aire.dashboard import build_app
+    except ImportError as exc:
+        typer.secho(
+            f"error: the dashboard needs the 'dashboard' extra "
+            f"(pip install 'aire[dashboard]') — {exc}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2) from exc
+
+    if not db.exists():
+        typer.secho(f"error: no such file: {db}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        typer.secho(
+            f"warning: binding {host} exposes the dashboard beyond localhost — "
+            "it has no authentication; put it behind an authenticating proxy.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+    typer.secho(f"AIRE dashboard → http://{host}:{port}  (Ctrl-C to stop)", fg=typer.colors.GREEN)
+    uvicorn.run(build_app(db, title=title), host=host, port=port, log_level="warning")
+
+
+@app.command()
 def report(
     db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
     out: Annotated[

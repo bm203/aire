@@ -1,0 +1,50 @@
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body {
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0; color: #1a1f24; background: #fbfcfd;
+}
+a { color: #1558d6; }
+.topbar {
+  background: #1a1f24; color: #fff; padding: .6rem 1.2rem; font-weight: 600;
+}
+.topbar a { color: #fff; text-decoration: none; }
+.topbar .meta { color: #9aa4ad; font-weight: 400; }
+main { max-width: 64rem; margin: 1.5rem auto; padding: 0 1.2rem; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.15rem; margin-top: 2rem; }
+code { background: #eef1f4; padding: .1em .35em; border-radius: 4px;
+       font-size: .85em; word-break: break-all; }
+.meta { color: #5a656e; font-size: .9em; }
+table { border-collapse: collapse; width: 100%; margin: .8rem 0; font-size: .93em; }
+th, td { border: 1px solid #d5dbe0; padding: .45rem .6rem; text-align: left;
+         vertical-align: top; }
+th { background: #eef1f4; }
+.banner { padding: .7rem 1rem; border-radius: 6px; font-weight: 600; margin: 1rem 0; }
+.ok  { background: #e6f4ea; border: 1px solid #34a853; }
+.bad { background: #fdecea; border: 1px solid #d93025; }
+.empty { color: #5a656e; background: #eef1f4; padding: 1rem; border-radius: 6px; }
+.risk { font-size: 1.05em; }
+.sev { font-weight: 700; text-transform: uppercase; font-size: .78em;
+       padding: .1em .5em; border-radius: 4px; white-space: nowrap; }
+.sev-critical { background: #7a0916; color: #fff; }
+.sev-high     { background: #d93025; color: #fff; }
+.sev-medium   { background: #f5a623; color: #1a1f24; }
+.sev-low      { background: #cfe3f7; color: #1a1f24; }
+.sev-info, .sev-none { background: #e8eaed; color: #1a1f24; }
+.timeline { list-style: none; padding: 0; }
+.timeline li { border-left: 3px solid #d5dbe0; padding: .3rem .8rem; margin: .2rem 0; }
+.etype { font-weight: 600; }
+pre { background: #eef1f4; padding: .7rem; border-radius: 6px; overflow-x: auto;
+      font-size: .82em; max-width: 100%; }
+footer { max-width: 64rem; margin: 3rem auto 2rem; padding: 0 1.2rem;
+         color: #5a656e; font-size: .85em; border-top: 1px solid #d5dbe0;
+         padding-top: .8rem; }
+@media (prefers-color-scheme: dark) {
+  body { background: #14181c; color: #e7ebee; }
+  main { color: #e7ebee; }
+  code, th, pre, .empty { background: #232a30; }
+  th, td { border-color: #313a42; }
+  .meta { color: #9aa4ad; }
+  a { color: #7aa7ff; }
+}

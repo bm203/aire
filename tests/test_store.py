@@ -155,3 +155,27 @@ class TestCli:
 
         missing = runner.invoke(app, ["verify", str(tmp_path / "nope.db")])
         assert missing.exit_code == 2
+
+
+class TestReadOnly:
+    def test_append_is_refused(self, tmp_path):
+        rw = EvidenceStore(tmp_path / "e.db")
+        rw.append(session_id="s", app="t", event_type=EventType.LLM_REQUEST, payload={})
+        rw.close()
+        ro = EvidenceStore(tmp_path / "e.db", read_only=True)
+        try:
+            with pytest.raises(RuntimeError, match="read-only"):
+                ro.append(session_id="s", app="t", event_type=EventType.LLM_REQUEST, payload={})
+        finally:
+            ro.close()
+
+    def test_reads_and_verifies_read_only(self, tmp_path):
+        rw = EvidenceStore(tmp_path / "e.db")
+        fill(rw, 4)
+        rw.close()
+        ro = EvidenceStore(tmp_path / "e.db", read_only=True)
+        try:
+            assert len(list(ro.events())) == 4
+            assert ro.verify().ok
+        finally:
+            ro.close()

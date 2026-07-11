@@ -37,6 +37,8 @@ anthropic = ["anthropic>=0.40"]
 # LangGraph app; only the checkpoint packages are needed, not full langgraph.
 langgraph = ["langgraph-checkpoint-sqlite>=2.0"]
 pii = ["presidio-analyzer>=2.2"]
+# Local, read-only audit dashboard (aire dashboard). jinja2 is already core.
+dashboard = ["fastapi>=0.110", "uvicorn>=0.29"]
 examples = [
   "anthropic>=0.40",
   "fastapi>=0.110",

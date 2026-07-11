@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}AIRE audit dashboard{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="topbar"><a href="/">AIRE</a> <span class="meta">· local read-only audit dashboard</span></div>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer>
+Findings are detected conditions with evidence pointers (event id + SHA-256) —
+not a compliance certification. This dashboard is read-only and local; it never
+modifies the evidence store and serves no external resources. Verify integrity
+with <code>aire verify</code>.
+</footer>
+</body>
+</html>

@@ -57,14 +57,23 @@ class VerificationResult:
 
 
 class EvidenceStore:
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, read_only: bool = False) -> None:
         self.path = Path(path)
+        self.read_only = read_only
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
-        self._restrict_permissions()
+        if read_only:
+            # A viewer (e.g. the dashboard) opens the store OS-level read-only:
+            # no schema DDL, no chmod, and append() is refused. The evidence is
+            # never mutated by anything that only reads it.
+            self._conn = sqlite3.connect(
+                f"file:{self.path}?mode=ro", uri=True, check_same_thread=False
+            )
+        else:
+            self._conn = sqlite3.connect(self.path, check_same_thread=False)
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.executescript(_SCHEMA)
+            self._conn.commit()
+            self._restrict_permissions()
 
     def _restrict_permissions(self) -> None:
         """Evidence contains prompts, memory contents, and possibly PII —
@@ -90,6 +99,8 @@ class EvidenceStore:
         trace_id: str | None = None,
     ) -> AuditEvent:
         """Seal an event onto the chain head and persist it atomically."""
+        if self.read_only:
+            raise RuntimeError("evidence store opened read-only; append is refused")
         with self._lock:
             # BEGIN IMMEDIATE takes the write lock before reading the chain
             # head, so head lookup + insert are one atomic unit even with
