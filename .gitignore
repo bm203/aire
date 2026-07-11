@@ -11,10 +11,11 @@ build/
 .env
 .envrc
 
-# Editors / OS
+# Editors / OS / local tooling
 .vscode/
 .idea/
 .DS_Store
+.claude/
 
 # Local-only docs (never public — see CLAUDE.md doc map)
 CLAUDE.md
