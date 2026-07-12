@@ -306,6 +306,14 @@ def detect(
     pii_model: Annotated[
         str, typer.Option("--pii-model", help="spaCy model for Presidio")
     ] = "en_core_web_sm",
+    pii_entities: Annotated[
+        str | None,
+        typer.Option(
+            "--pii-entities",
+            help="Comma-separated Presidio entity types to detect "
+            "(default: PERSON,EMAIL_ADDRESS,PHONE_NUMBER,US_SSN,CREDIT_CARD,IBAN_CODE,IP_ADDRESS)",
+        ),
+    ] = None,
     session_id: Annotated[
         str | None, typer.Option("--session", help="Only inspect this session's events")
     ] = None,
@@ -313,7 +321,8 @@ def detect(
     """Run detectors over stored evidence; append findings to the chain.
 
     Always runs prompt-injection and audit-log-completeness detectors. PII
-    (Presidio) runs unless --no-pii or the extra isn't installed. The deep
+    (Presidio) runs unless --no-pii or the extra isn't installed, over a tuned
+    high-signal entity set by default (override with --pii-entities). The deep
     memory retention/deletion control runs when --memory-db is given.
     """
     from aire.detectors import CompletenessDetector, DetectorRunner, PromptInjectionDetector
@@ -330,7 +339,12 @@ def detect(
         try:
             from aire.detectors.pii import PIIDetector, PresidioScanner
 
-            scanner = PresidioScanner(model=pii_model)
+            entities = (
+                [e.strip() for e in pii_entities.split(",") if e.strip()]
+                if pii_entities
+                else None
+            )
+            scanner = PresidioScanner(model=pii_model, entities=entities)
             detectors.append(PIIDetector(scanner=scanner))
         except ImportError:
             typer.secho(

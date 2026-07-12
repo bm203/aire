@@ -20,6 +20,7 @@ from time import perf_counter
 from aire.core.events import AuditEvent, EventType
 from aire.detectors import CompletenessDetector, DetectorRunner, PromptInjectionDetector
 from aire.detectors.memory_retention import MemoryRetentionControl
+from aire.detectors.pii import DEFAULT_PII_ENTITIES
 from aire.policy import PolicyEngine, builtin_policies, load_policies
 from aire.report import build_report
 from aire.store import EvidenceStore
@@ -29,18 +30,9 @@ from evals.metrics import ConfusionMatrix
 
 _POLICIES = Path(__file__).parent / "policies.yaml"
 
-# Tuned PII entity set (V1 live-validation learning): restrict to entities the
-# organization treats as personal data, dropping DATE_TIME / ORGANIZATION / URL
-# that Presidio flags by default and that inflate counts with non-PII noise.
-_PII_ENTITIES = [
-    "PERSON",
-    "EMAIL_ADDRESS",
-    "PHONE_NUMBER",
-    "US_SSN",
-    "CREDIT_CARD",
-    "IBAN_CODE",
-    "IP_ADDRESS",
-]
+# Measure on AIRE's shipped default entity set (single source of truth in the
+# detector), so the scores describe what a user gets out of the box.
+_PII_ENTITIES = DEFAULT_PII_ENTITIES
 
 _INJECTION_ID = "prompt_injection.heuristic"
 _PII_ID = "pii.content"

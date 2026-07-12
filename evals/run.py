@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import aire
+from aire.detectors.pii import DEFAULT_PII_ENTITIES
 from aire.store import EvidenceStore
 
 _DEFAULT_OUT = Path(__file__).parent / "RESULTS.md"
@@ -43,17 +44,9 @@ def _run_agentdojo() -> dict:
             store.close()
 
 
-# Tuned personal-data entity set (V1 live-validation learning): drop the
-# DATE_TIME / ORGANIZATION / URL noise Presidio flags by default.
-_PII_ENTITIES = [
-    "PERSON",
-    "EMAIL_ADDRESS",
-    "PHONE_NUMBER",
-    "US_SSN",
-    "CREDIT_CARD",
-    "IBAN_CODE",
-    "IP_ADDRESS",
-]
+# Measure on AIRE's shipped default entity set, so the reported numbers describe
+# exactly what a user gets out of the box (single source of truth in the detector).
+_PII_ENTITIES = DEFAULT_PII_ENTITIES
 
 
 def _run_agentleak(data_dir: Path | None) -> dict:

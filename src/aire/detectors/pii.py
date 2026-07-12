@@ -44,6 +44,22 @@ class PIIScanner(Protocol):
     def scan(self, text: str) -> list[PIIMatch]: ...
 
 
+# The entity set AIRE detects by default. Deliberately narrower than Presidio's
+# full recognizer list: these are the high-signal identifier types for an audit,
+# and this is the exact set the evaluation corpus was measured on (P/R/F1=1.0).
+# Presidio's broader set (URL, ORGANIZATION, NRP, DATE_TIME, …) adds noise that
+# is rarely PII in this context; pass an explicit `entities=` list to override.
+DEFAULT_PII_ENTITIES = [
+    "PERSON",
+    "EMAIL_ADDRESS",
+    "PHONE_NUMBER",
+    "US_SSN",
+    "CREDIT_CARD",
+    "IBAN_CODE",
+    "IP_ADDRESS",
+]
+
+
 class PresidioScanner:
     def __init__(
         self,
@@ -71,7 +87,7 @@ class PresidioScanner:
         self._engine = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=[language])
         self._language = language
         self._threshold = score_threshold
-        self._entities = entities
+        self._entities = entities if entities is not None else DEFAULT_PII_ENTITIES
 
     def scan(self, text: str) -> list[PIIMatch]:
         results = self._engine.analyze(

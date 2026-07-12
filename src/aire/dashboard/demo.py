@@ -31,8 +31,6 @@ _INJECTION = (
 )
 _WORK_THREAD = "wo-4471"
 
-_PII_ENTITIES = ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN", "CREDIT_CARD", "IBAN_CODE"]
-
 
 def build_demo_store(evidence_db: str | Path, memory_db: str | Path) -> Path:
     """Construct + audit the synthetic store; return the evidence-db path."""
@@ -129,7 +127,7 @@ def build_demo_store(evidence_db: str | Path, memory_db: str | Path) -> Path:
 
     # Run the real pipeline so the dashboard shows genuine findings.
     store = EvidenceStore(evidence_db)
-    scanner = PresidioScanner(entities=_PII_ENTITIES)
+    scanner = PresidioScanner()  # DEFAULT_PII_ENTITIES — the measured tuned set
     try:
         PolicyEngine(builtin_policies()).run(store)
         DetectorRunner(

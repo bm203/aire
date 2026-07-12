@@ -11,7 +11,7 @@ if not spacy.util.is_package("en_core_web_sm"):
 
 from aire.core.events import EventType  # noqa: E402
 from aire.detectors import DetectorRunner  # noqa: E402
-from aire.detectors.pii import PIIDetector, PresidioScanner  # noqa: E402
+from aire.detectors.pii import DEFAULT_PII_ENTITIES, PIIDetector, PresidioScanner  # noqa: E402
 from aire.store import EvidenceStore  # noqa: E402
 
 
@@ -72,3 +72,38 @@ class TestPIIDetector:
         )
         outcome = DetectorRunner([detector]).run(store)
         assert outcome.recorded == []
+
+
+class TestDefaultEntities:
+    """The default scanner is tuned to high-signal identifiers, not Presidio's
+    full recognizer list — a URL alone is not treated as personal data."""
+
+    _URL_TEXT = "Docs are at https://wiki.example.com/runbook/pump-07 — see section 3."
+
+    def test_default_ignores_url_noise(self, store):
+        detector = PIIDetector(scanner=PresidioScanner(entities=DEFAULT_PII_ENTITIES))
+        store.append(
+            session_id="s", app="t", event_type=EventType.LLM_REQUEST,
+            payload={"messages": [{"role": "user", "content": self._URL_TEXT}]},
+        )
+        outcome = DetectorRunner([detector]).run(store)
+        assert outcome.recorded == []  # URL is not in the default set
+
+    def test_scanner_default_matches_shared_constant(self, store):
+        # No explicit entities => the shipped tuned set (single source of truth).
+        detector = PIIDetector(scanner=PresidioScanner())
+        store.append(
+            session_id="s", app="t", event_type=EventType.LLM_REQUEST,
+            payload={"messages": [{"role": "user", "content": self._URL_TEXT}]},
+        )
+        assert DetectorRunner([detector]).run(store).recorded == []
+
+    def test_explicit_override_can_widen(self, store):
+        # Opting into URL detection re-enables it — the override path works.
+        detector = PIIDetector(scanner=PresidioScanner(entities=["URL"]))
+        store.append(
+            session_id="s", app="t", event_type=EventType.LLM_REQUEST,
+            payload={"messages": [{"role": "user", "content": self._URL_TEXT}]},
+        )
+        [rec] = DetectorRunner([detector]).run(store).recorded
+        assert rec.payload["detail"]["entity_counts"].get("URL", 0) >= 1
