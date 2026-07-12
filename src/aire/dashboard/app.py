@@ -24,6 +24,10 @@ from aire.store import EvidenceStore
 # Findings/policy results are shown in the findings table, not the raw timeline.
 _TIMELINE_EXCLUDE = frozenset({EventType.FINDING, EventType.POLICY_RESULT})
 
+# Severity ordering for the triage view + the filter chips shown in the UI.
+_SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
+_SEVERITIES = ["critical", "high", "medium", "low", "info"]
+
 _TEMPLATES = Path(__file__).parent / "templates"
 _STATIC = Path(__file__).parent / "static"
 
@@ -135,6 +139,21 @@ def build_app(evidence_db: str | Path, *, title: str = "AIRE Audit Report") -> F
         if event is None:
             raise HTTPException(status_code=404, detail="event not found")
         return _html("event.html.j2", event=_event_view(event), max_chars=MAX_PAYLOAD_CHARS)
+
+    @app.get("/findings", response_class=HTMLResponse)
+    def findings_view(severity: str | None = Query(default=None)) -> HTMLResponse:
+        report = _report()
+        findings = [f for s in report.sessions for f in s.findings]
+        if severity:
+            findings = [f for f in findings if f.severity.value == severity]
+        findings.sort(key=lambda f: (-_SEV_RANK.get(f.severity.value, 0), f.ts))
+        return _html(
+            "findings.html.j2",
+            report=report,
+            findings=findings,
+            severity=severity,
+            severities=_SEVERITIES,
+        )
 
     @app.get("/api/report.json")
     def report_json() -> Response:

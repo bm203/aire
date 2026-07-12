@@ -1,0 +1,50 @@
+{% extends "base.html.j2" %}
+{% block title %}AIRE — findings{% endblock %}
+{% block content %}
+<p><a href="/">← overview</a></p>
+<h1>Findings</h1>
+
+<p class="meta">Filter by severity:
+  <a href="/findings">all</a>
+  {% for s in severities %} · <a href="/findings?severity={{ s }}">{{ s }}</a>{% endfor %}
+  {% if severity %} — showing <span class="sev sev-{{ severity }}">{{ severity }}</span>{% endif %}
+</p>
+
+{% if findings %}
+<table>
+  <thead><tr>
+    <th>Severity</th><th>Session</th><th>Origin</th><th>Finding</th>
+    <th>Evidence</th><th>Framework citations</th>
+  </tr></thead>
+  <tbody>
+  {% for f in findings %}
+    <tr>
+      <td><span class="sev sev-{{ f.severity.value }}">{{ f.severity.value }}</span>
+          {% if f.verdict %}<br><span class="meta">[{{ f.verdict }}]</span>{% endif %}</td>
+      <td><a href="/session?id={{ f.session_id | urlencode }}"><code>{{ f.session_id }}</code></a></td>
+      <td><code>{{ f.origin }}</code></td>
+      <td>{{ f.summary }}</td>
+      <td>
+        {% if f.source_event_ids %}
+          {% for eid in f.source_event_ids %}
+            <a href="/event?id={{ eid | urlencode }}"><code>{{ eid }}</code></a><br>
+          {% endfor %}
+        {% else %}
+          <a href="/event?id={{ f.record_event_id | urlencode }}"><code>{{ f.record_event_id }}</code></a>
+        {% endif %}
+      </td>
+      <td>
+        {% for c in f.citations %}{{ c.framework }} <strong>{{ c.control_id }}</strong><br>{% endfor %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">
+  {% if severity %}No findings at severity <strong>{{ severity }}</strong>.
+  {% else %}No findings recorded yet — run <code>aire evaluate</code> and
+    <code>aire detect</code> against this store first.{% endif %}
+</p>
+{% endif %}
+{% endblock %}

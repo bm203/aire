@@ -22,6 +22,7 @@
     {% for sev, count in report.severity_totals | dictsort %}{{ sev }}: {{ count }}{{ ", " if not loop.last }}{% endfor %}
   {% endif %}
 </p>
+{% if report.sessions %}<p><a href="/findings">▸ View all findings (triage across sessions)</a></p>{% endif %}
 
 <h2>Sessions</h2>
 {% if report.sessions %}

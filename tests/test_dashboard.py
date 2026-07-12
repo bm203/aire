@@ -217,3 +217,38 @@ class TestUntrustedContent:
         body = TestClient(build_app(db)).get("/event", params={"id": eid}).text
         assert "truncated" in body
         assert "x" * 25000 not in body  # the full blob is not dumped
+
+
+class TestVerifyAndFilters:
+    def test_broken_chain_banner(self, client):
+        import sqlite3
+
+        c, db = client
+        conn = sqlite3.connect(db)
+        conn.execute("DROP TRIGGER events_no_update")
+        conn.execute("UPDATE events SET app='evil' WHERE seq=1")
+        conn.commit()
+        conn.close()
+        body = c.get("/").text
+        assert "Evidence chain BROKEN" in body
+        assert "cannot be relied upon" in body
+
+    def test_findings_triage_lists_across_sessions(self, client):
+        c, _ = client
+        body = c.get("/findings").text
+        assert "prompt_injection.heuristic" in body
+        assert "TOOL_ALLOWLIST" in body  # a policy violation shows too
+        assert 'href="/session?id=cust-1"' in body
+
+    def test_severity_filter(self, client):
+        c, _ = client
+        high = c.get("/findings", params={"severity": "high"}).text
+        assert "prompt_injection.heuristic" in high  # high severity
+        crit = c.get("/findings", params={"severity": "critical"}).text
+        assert "No findings at severity" in crit  # none critical in the seed
+
+    def test_empty_store_shows_guidance(self, tmp_path):
+        db = tmp_path / "empty.db"
+        EvidenceStore(db).close()
+        body = TestClient(build_app(db)).get("/").text
+        assert "No findings recorded yet" in body
