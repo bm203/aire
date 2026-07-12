@@ -179,3 +179,11 @@ class TestReadOnly:
             assert ro.verify().ok
         finally:
             ro.close()
+
+
+class TestGetEvent:
+    def test_get_event_found_and_missing(self, store):
+        events = fill(store, 3)
+        got = store.get_event(events[1].event_id)
+        assert got == events[1]
+        assert store.get_event("nope") is None

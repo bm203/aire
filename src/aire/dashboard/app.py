@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 try:
-    from fastapi import FastAPI, Request, Response
+    from fastapi import FastAPI, HTTPException, Query, Request, Response
     from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
 except ImportError as exc:  # pragma: no cover
@@ -15,9 +16,13 @@ except ImportError as exc:  # pragma: no cover
 
 from jinja2 import Environment, FileSystemLoader
 
+from aire.core.events import AuditEvent, EventType
 from aire.report.build import build_report
 from aire.report.render import to_json
 from aire.store import EvidenceStore
+
+# Findings/policy results are shown in the findings table, not the raw timeline.
+_TIMELINE_EXCLUDE = frozenset({EventType.FINDING, EventType.POLICY_RESULT})
 
 _TEMPLATES = Path(__file__).parent / "templates"
 _STATIC = Path(__file__).parent / "static"
@@ -38,6 +43,25 @@ def _render_env() -> Environment:
     # autoescape forced on — all rendered content (prompt excerpts, session
     # ids) is untrusted. Mirrors aire.report.render.
     return Environment(loader=FileSystemLoader(str(_TEMPLATES)), autoescape=True)
+
+
+def _event_view(event: AuditEvent) -> dict:
+    """Render-safe view of one event with a size-bounded payload."""
+    payload = json.dumps(event.payload, indent=2, ensure_ascii=False, default=str)
+    truncated = len(payload) > MAX_PAYLOAD_CHARS
+    if truncated:
+        payload = payload[:MAX_PAYLOAD_CHARS] + "\n… (truncated — full payload in the store)"
+    return {
+        "event_id": event.event_id,
+        "ts": event.ts,
+        "session_id": event.session_id,
+        "event_type": event.event_type.value,
+        "app": event.app,
+        "hash": event.hash,
+        "prev_hash": event.prev_hash,
+        "payload": payload,
+        "truncated": truncated,
+    }
 
 
 def build_app(evidence_db: str | Path, *, title: str = "AIRE Audit Report") -> FastAPI:
@@ -79,6 +103,38 @@ def build_app(evidence_db: str | Path, *, title: str = "AIRE Audit Report") -> F
     @app.get("/", response_class=HTMLResponse)
     def overview() -> HTMLResponse:
         return _html("overview.html.j2", report=_report())
+
+    @app.get("/session", response_class=HTMLResponse)
+    def session_view(session_id: str = Query(alias="id")) -> HTMLResponse:
+        report = _report(session_id=session_id)
+        session = report.sessions[0] if report.sessions else None
+        store = EvidenceStore(evidence_db, read_only=True)
+        try:
+            events = [
+                _event_view(e)
+                for e in store.events(session_id=session_id)
+                if e.event_type not in _TIMELINE_EXCLUDE
+            ]
+        finally:
+            store.close()
+        return _html(
+            "session.html.j2",
+            report=report,
+            session=session,
+            session_id=session_id,
+            events=events,
+        )
+
+    @app.get("/event", response_class=HTMLResponse)
+    def event_view(event_id: str = Query(alias="id")) -> HTMLResponse:
+        store = EvidenceStore(evidence_db, read_only=True)
+        try:
+            event = store.get_event(event_id)
+        finally:
+            store.close()
+        if event is None:
+            raise HTTPException(status_code=404, detail="event not found")
+        return _html("event.html.j2", event=_event_view(event), max_chars=MAX_PAYLOAD_CHARS)
 
     @app.get("/api/report.json")
     def report_json() -> Response:

@@ -1,0 +1,65 @@
+{% extends "base.html.j2" %}
+{% block title %}AIRE — session {{ session_id }}{% endblock %}
+{% block content %}
+<p><a href="/">← overview</a></p>
+<h1>Session <code>{{ session_id }}</code></h1>
+
+{% if session %}
+<p class="risk">Risk:
+  <span class="sev sev-{{ session.risk_level.value }}">{{ session.risk_level.value }}</span>
+  (score {{ session.risk_score }}) · {{ session.findings | length }} finding(s)</p>
+
+<h2>Findings</h2>
+<table>
+  <thead><tr>
+    <th>Severity</th><th>Origin</th><th>Finding</th><th>Evidence</th><th>Framework citations</th>
+  </tr></thead>
+  <tbody>
+  {% for f in session.findings %}
+    <tr>
+      <td><span class="sev sev-{{ f.severity.value }}">{{ f.severity.value }}</span>
+          {% if f.verdict %}<br><span class="meta">[{{ f.verdict }}]</span>{% endif %}</td>
+      <td><code>{{ f.origin }}</code></td>
+      <td>{{ f.summary }}</td>
+      <td>
+        {% if f.source_event_ids %}
+          {% for eid in f.source_event_ids %}
+            <a href="/event?id={{ eid | urlencode }}"><code>{{ eid }}</code></a><br>
+            <span class="meta">sha256 {{ f.source_event_hashes[loop.index0][:16] }}…</span><br>
+          {% endfor %}
+        {% else %}
+          <a href="/event?id={{ f.record_event_id | urlencode }}"><code>{{ f.record_event_id }}</code></a>
+        {% endif %}
+      </td>
+      <td>
+        {% for c in f.citations %}
+          {{ c.framework }} <strong>{{ c.control_id }}</strong> — {{ c.title }}<br>
+        {% endfor %}
+        {% if f.unresolved_refs %}
+          <span class="meta">⚠ unresolved: {{ f.unresolved_refs | join(", ") }}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No findings recorded for this session.</p>
+{% endif %}
+
+<h2>Event timeline ({{ events | length }})</h2>
+{% if events %}
+<ul class="timeline">
+{% for e in events %}
+  <li>
+    <span class="etype">{{ e.event_type }}</span>
+    <span class="meta">{{ e.ts }} ·
+      <a href="/event?id={{ e.event_id | urlencode }}"><code>{{ e.event_id }}</code></a></span>
+    <details><summary>payload</summary><pre>{{ e.payload }}</pre></details>
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">No activity events for this session.</p>
+{% endif %}
+{% endblock %}

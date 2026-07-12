@@ -146,3 +146,74 @@ class TestCli:
         r = CliRunner().invoke(app, ["dashboard", str(db), "--host", "0.0.0.0"])
         assert r.exit_code == 0
         assert "beyond localhost" in r.output
+
+
+def _event_id_of(db, event_type):
+    ro = EvidenceStore(db, read_only=True)
+    try:
+        return next(e.event_id for e in ro.events(event_type=event_type))
+    finally:
+        ro.close()
+
+
+class TestSessionAndEvent:
+    def test_session_page_lists_findings_and_timeline(self, client):
+        c, db = client
+        r = c.get("/session", params={"id": "cust-1"})
+        assert r.status_code == 200
+        body = r.text
+        assert "prompt_injection.heuristic" in body  # a finding origin
+        assert "Event timeline" in body
+        assert "llm.request" in body  # a timeline event type
+
+    def test_evidence_pointer_links_resolve(self, client):
+        c, db = client
+        eid = _event_id_of(db, EventType.TOOL_RESULT)
+        r = c.get("/event", params={"id": eid})
+        assert r.status_code == 200
+        body = r.text
+        assert eid in body
+        assert "Hash (sha256)" in body and "Prev hash" in body
+
+    def test_missing_event_is_404(self, client):
+        c, _ = client
+        assert c.get("/event", params={"id": "does-not-exist"}).status_code == 404
+
+
+class TestUntrustedContent:
+    def _seed_hostile(self, db):
+        hostile = "<script>alert(1)</script>"
+        store = EvidenceStore(db)
+        store.append(
+            session_id=hostile,
+            app="t",
+            event_type=EventType.LLM_REQUEST,
+            payload={"messages": [{"role": "user", "content": hostile}]},
+        )
+        store.append(session_id=hostile, app="t", event_type=EventType.LLM_RESPONSE, payload={})
+        DetectorRunner([CompletenessDetector()]).run(store)
+        store.close()
+        return hostile
+
+    def test_hostile_session_id_and_payload_are_escaped(self, tmp_path):
+        db = tmp_path / "h.db"
+        hostile = self._seed_hostile(db)
+        c = TestClient(build_app(db))
+        body = c.get("/session", params={"id": hostile}).text
+        assert "<script>alert(1)</script>" not in body  # never executes
+        assert "&lt;script&gt;" in body  # rendered, escaped
+
+    def test_oversized_payload_is_truncated(self, tmp_path):
+        db = tmp_path / "big.db"
+        store = EvidenceStore(db)
+        store.append(
+            session_id="s",
+            app="t",
+            event_type=EventType.LLM_REQUEST,
+            payload={"blob": "x" * 30000},
+        )
+        store.close()
+        eid = _event_id_of(db, EventType.LLM_REQUEST)
+        body = TestClient(build_app(db)).get("/event", params={"id": eid}).text
+        assert "truncated" in body
+        assert "x" * 25000 not in body  # the full blob is not dumped

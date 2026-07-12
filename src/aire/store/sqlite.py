@@ -160,6 +160,13 @@ class EvidenceStore:
         for row in self._conn.execute(query, params):
             yield self._row_to_event(row)
 
+    def get_event(self, event_id: str) -> AuditEvent | None:
+        """Return one event by id, or None (used by the dashboard drill-down)."""
+        row = self._conn.execute(
+            f"SELECT {_COLUMNS} FROM events WHERE event_id = ?", (event_id,)
+        ).fetchone()
+        return self._row_to_event(row) if row else None
+
     def head_hash(self) -> str:
         row = self._conn.execute("SELECT hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
         return row[0] if row else GENESIS_HASH
