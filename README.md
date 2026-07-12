@@ -189,6 +189,7 @@ Detectors are measured against public benchmarks by an offline replay harness
 ## Documentation
 
 - [Architecture](docs/architecture.md) — modules, event flow, the hash chain.
+- [Pilot guide](docs/pilot-guide.md) — running AIRE on a real Anthropic + LangGraph app.
 - [Dashboard](docs/dashboard.md) — the local read-only audit viewer.
 - [Policy authoring](docs/policy-authoring.md) — writing YAML/CEL policies.
 - [Framework mappings](docs/framework-mappings.md) — control citations.
