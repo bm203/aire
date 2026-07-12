@@ -252,3 +252,51 @@ class TestVerifyAndFilters:
         EvidenceStore(db).close()
         body = TestClient(build_app(db)).get("/").text
         assert "No findings recorded yet" in body
+
+
+def _demo_available():
+    import importlib.util
+
+    if importlib.util.find_spec("presidio_analyzer") is None:
+        return False
+    if importlib.util.find_spec("langgraph.checkpoint.sqlite") is None:
+        return False
+    import spacy
+
+    return spacy.util.is_package("en_core_web_sm")
+
+
+demo_only = pytest.mark.skipif(not _demo_available(), reason="needs pii + langgraph + spaCy model")
+
+
+class TestDemo:
+    @demo_only
+    def test_demo_store_is_rich_intact_and_pii_safe(self, tmp_path):
+        from aire.dashboard.demo import build_demo_store
+
+        db = build_demo_store(tmp_path / "e.db", tmp_path / "m.db")
+        c = TestClient(build_app(db))
+        # overview: critical + chain intact
+        overview = c.get("/").text
+        assert "Evidence chain INTACT" in overview
+        # findings across >=3 detectors
+        data = c.get("/api/report.json").json()
+        origins = {f["origin"] for s in data["sessions"] for f in s["findings"]}
+        assert len(origins) >= 3
+        # the findings triage page carries entity types, never raw PII values
+        findings = c.get("/findings").text
+        assert "morgan.avery@example.com" not in findings
+        assert "555-0175" not in findings
+
+    @demo_only
+    def test_cli_demo_builds_and_serves(self, monkeypatch):
+        import uvicorn
+        from typer.testing import CliRunner
+
+        from aire.cli import app
+
+        served = {}
+        monkeypatch.setattr(uvicorn, "run", lambda a, **kw: served.update(kw))
+        r = CliRunner().invoke(app, ["dashboard", "--demo"])
+        assert r.exit_code == 0, r.output
+        assert served["host"] == "127.0.0.1"

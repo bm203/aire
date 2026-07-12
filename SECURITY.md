@@ -34,6 +34,12 @@ constraint at every level, not a feature.
   (`requirements.lock`), scanned for known vulnerabilities in CI
   (`pip-audit`), and held to a 14-day maturity cooldown before adoption. See
   [dependency-management.md](docs/dependency-management.md).
+- **The dashboard is a local read-only viewer.** It opens the evidence store
+  read-only (cannot write), binds `127.0.0.1` with no authentication, serves
+  no scripts or external resources (strict CSP, no `script-src`), and
+  size-bounds/escapes untrusted payloads. It is single-user-local by design —
+  do not expose it publicly without an authenticating reverse proxy. See
+  [dashboard.md](docs/dashboard.md).
 
 ## Threat model (v1 scope)
 
@@ -45,6 +51,7 @@ constraint at every level, not a feature.
 | AIRE corrupting the host's memory store during audit | Read-only connections, enforced by SQLite |
 | Evidence leaking to other local users | 0600 file permissions on DB + sidecars |
 | PII amplification through findings | Findings carry types/offsets/pointers, not values |
+| Dashboard exposing evidence over the network | Read-only store open, localhost-only bind (warns otherwise), strict CSP, no scripts/external resources |
 | Malicious or vulnerable dependency | Hash-pinned lockfile, `pip-audit` in CI, 14-day adoption cooldown |
 
 Out of scope in v1 (roadmap): at-rest encryption of the evidence store,

@@ -20,19 +20,26 @@ def version() -> None:
 
 @app.command()
 def dashboard(
-    db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
+    db: Annotated[
+        Path | None, typer.Argument(help="Path to the evidence store (SQLite file)")
+    ] = None,
     host: Annotated[
         str, typer.Option("--host", help="Bind address (localhost only unless you know why)")
     ] = "127.0.0.1",
     port: Annotated[int, typer.Option("--port", "-p", help="Port")] = 8787,
     title: Annotated[str, typer.Option("--title")] = "AIRE Audit Report",
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Serve a synthetic populated demo store (needs pii+langgraph)"),
+    ] = False,
 ) -> None:
     """Serve a local, read-only web dashboard over an evidence store.
 
     Displays the findings, risk, framework citations, and event timeline that
     `aire evaluate` / `aire detect` already recorded — it never writes to the
     store. Binds 127.0.0.1 by default; do not expose it publicly without an
-    authenticating reverse proxy.
+    authenticating reverse proxy. Use `--demo` to build and serve a synthetic
+    populated audit for a first look.
     """
     try:
         import uvicorn
@@ -47,7 +54,22 @@ def dashboard(
         )
         raise typer.Exit(code=2) from exc
 
-    if not db.exists():
+    if demo:
+        import tempfile
+
+        try:
+            from aire.dashboard.demo import build_demo_store
+        except ImportError as exc:
+            typer.secho(f"error: --demo needs extras — {exc}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=2) from exc
+        tmp = Path(tempfile.mkdtemp(prefix="aire-demo-"))
+        typer.echo("building synthetic demo evidence store…")
+        db = build_demo_store(tmp / "demo_evidence.db", tmp / "demo_memory.db")
+        title = "AIRE — demo (synthetic data)"
+    elif db is None:
+        typer.secho("error: pass an evidence DB path, or --demo", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+    elif not db.exists():
         typer.secho(f"error: no such file: {db}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2)
 

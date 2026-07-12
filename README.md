@@ -130,6 +130,19 @@ aire verify evidence.db                        # confirm the chain is intact
 
 A sample HTML report is in [`docs/sample-report.html`](docs/sample-report.html).
 
+**4. Or browse it in the local dashboard** (read-only, localhost only):
+
+```bash
+pip install -e ".[dashboard,pii,langgraph]"
+aire dashboard --demo          # a synthetic populated audit, in 60 seconds
+aire dashboard evidence.db     # or your own store
+```
+
+The dashboard is an auditor-facing viewer over the same evidence — overview →
+findings triage → session timeline → event drill-down (with hashes). It never
+writes to the store, binds `127.0.0.1`, and serves no scripts or external
+resources. See [`docs/dashboard.md`](docs/dashboard.md).
+
 ---
 
 ## What it detects (v1)
@@ -176,6 +189,7 @@ Detectors are measured against public benchmarks by an offline replay harness
 ## Documentation
 
 - [Architecture](docs/architecture.md) — modules, event flow, the hash chain.
+- [Dashboard](docs/dashboard.md) — the local read-only audit viewer.
 - [Policy authoring](docs/policy-authoring.md) — writing YAML/CEL policies.
 - [Framework mappings](docs/framework-mappings.md) — control citations.
 - [Security](SECURITY.md) — threat model and reporting.
