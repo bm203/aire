@@ -69,7 +69,7 @@ dev = [
 aire = "aire.cli:app"
 
 [project.urls]
-Repository = "https://github.com/TBD/aire"
+Repository = "https://github.com/bm203/aire"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aire"]
