@@ -33,6 +33,9 @@ dependencies = [
 [project.optional-dependencies]
 # Collectors are optional so the core stays lean; install what your app uses.
 anthropic = ["anthropic>=0.40"]
+# Also covers Azure OpenAI (openai.AzureOpenAI shares the chat.completions
+# interface) — see src/aire/collectors/openai_sdk.py.
+openai = ["openai>=1.50"]
 # The collector wraps the BaseCheckpointSaver interface, so it works with any
 # LangGraph app; only the checkpoint packages are needed, not full langgraph.
 langgraph = ["langgraph-checkpoint-sqlite>=2.0"]

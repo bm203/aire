@@ -1293,7 +1293,9 @@ numpy==2.4.6 \
 openai==2.45.0 \
     --hash=sha256:10d34ca9c5643bce775852fddbfc172505cb1d4de1ccd101696c3ecff358765d \
     --hash=sha256:5df105f5f8c9b711fcb9d06d2d3888cebc82506db216484c14a4e53cdf651777
-    # via agentdojo
+    # via
+    #   agentdojo
+    #   aire (pyproject.toml)
 orderly-set==5.5.0 \
     --hash=sha256:46f0b801948e98f427b412fcabb831677194c05c3b699b80de260374baa0b1e7 \
     --hash=sha256:e87185c8e4d8afa64e7f8160ee2c542a475b738bc891dc3f58102e654125e6ce

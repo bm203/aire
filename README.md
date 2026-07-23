@@ -109,6 +109,12 @@ with session("customer-42"):          # attribute events to a session
     client.messages.create(...)       # use the client exactly as before
 ```
 
+On OpenAI or Azure OpenAI instead, swap the import for
+`aire.collectors.openai_sdk.instrument` and call `client.chat.completions
+.create(...)` — same pattern, same evidence schema (detectors and policies
+don't change; only the collector is provider-specific). Pass
+`system="azure.ai.openai"` when instrumenting an `AzureOpenAI` client.
+
 For LangGraph memory, wrap the checkpointer with
 `aire.collectors.langgraph.InstrumentedSaver` — see
 [`examples/support_agent/`](examples/support_agent/) for a full instrumented
@@ -199,8 +205,8 @@ Detectors are measured against public benchmarks by an offline replay harness
 ## Roadmap (out of v1)
 
 Enforcement mode (blocking/redaction), governance dashboards, additional
-collectors (LiteLLM/OpenAI), OTLP export, PostgreSQL storage, more deep
-controls, and SIEM integration.
+collectors (LiteLLM, Google Gemini), OTLP export, PostgreSQL storage, more
+deep controls, and SIEM integration.
 
 ## License
 
