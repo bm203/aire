@@ -51,13 +51,17 @@ What makes it defensible under scrutiny:
 - **Measured, not asserted** — detectors are evaluated against public
   benchmarks (AgentDojo, AgentLeak) with reproducible numbers in
   [`evals/RESULTS.md`](evals/RESULTS.md).
+- **Provider-agnostic by construction** — collectors normalize each SDK's
+  request/response into the same OTel-GenAI-aligned event schema, so
+  detectors and policies work unchanged regardless of vendor (Anthropic,
+  OpenAI, and Azure OpenAI today).
 
 ---
 
 ## How it works
 
 ```
-   Your AI app (Anthropic SDK + LangGraph memory, or your own stack)
+   Your AI app (Anthropic or OpenAI/Azure OpenAI SDK + LangGraph memory, or your own stack)
         │  instrumented — observe-only, fail-open
         ▼
    Collectors ──────────────►  AuditEvent  (Pydantic; OTel-GenAI-aligned fields)
