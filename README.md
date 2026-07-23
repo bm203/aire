@@ -17,7 +17,7 @@ detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
 
-> **Status:** v1 feature-complete and tested (130 tests). Apache-2.0.
+> **Status:** v1 feature-complete and tested (178 tests). Apache-2.0.
 > Not yet published to a package index.
 
 ---
