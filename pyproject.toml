@@ -61,7 +61,7 @@ dev = [
   # Supply-chain tooling: pip-tools compiles the hash-pinned lockfile from
   # this file; pip-audit scans it for known vulnerabilities. See
   # docs/dependency-management.md.
-  "pip-tools>=7.4",
+  "pip-tools>=7.5.3",
   "pip-audit>=2.7",
 ]
 
