@@ -25,7 +25,7 @@ dependencies = [
   "pyyaml>=6.0",
   "structlog>=24.1",
   # Policy expressions are CEL (industry-standard, in-process): core, not optional.
-  "cel-python>=0.2",
+  "cel-python>=0.5.0",
   # Report rendering (HTML via autoescaped templates): core, not optional.
   "jinja2>=3.1",
 ]
