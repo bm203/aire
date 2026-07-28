@@ -53,7 +53,7 @@ examples = [
 # agentdojo is capped: the harness pins benchmark suite version "v1.2.1"
 # (see evals/agentdojo_eval.py) for reproducible numbers, so the package is
 # held to the range that ships it. Bump both together when re-baselining.
-eval = ["agentdojo>=0.1.30,<0.2", "presidio-analyzer>=2.2"]
+eval = ["agentdojo>=0.1.35,<0.2", "presidio-analyzer>=2.2"]
 dev = [
   "pytest>=8",
   "pytest-asyncio>=0.23",
