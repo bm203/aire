@@ -1,5 +1,5 @@
 {% extends "base.html.j2" %}
-{% block title %}AIRE — event {{ event.event_id }}{% endblock %}
+{% block title %}AIRE: event {{ event.event_id }}{% endblock %}
 {% block content %}
 <p><a href="/">← overview</a> ·
   <a href="/session?id={{ event.session_id | urlencode }}">← session {{ event.session_id }}</a></p>
@@ -18,7 +18,7 @@
 <h2>Payload</h2>
 <pre>{{ event.payload }}</pre>
 {% if event.truncated %}
-<p class="meta">Payload truncated to {{ max_chars }} chars for display — the full,
+<p class="meta">Payload truncated to {{ max_chars }} chars for display: the full,
   hashed payload remains in the evidence store.</p>
 {% endif %}
 {% endblock %}

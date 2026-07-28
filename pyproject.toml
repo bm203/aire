@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "aire"
 version = "0.1.0"
-description = "AI Runtime Evidence Engine — observe-only audit evidence collection, policy evaluation, and framework-mapped audit reports for AI applications"
+description = "AI Runtime Evidence Engine: observe-only audit evidence collection, policy evaluation, and framework-mapped audit reports for AI applications"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -24,9 +24,9 @@ dependencies = [
   "python-ulid>=2.7",
   "pyyaml>=6.0",
   "structlog>=24.1",
-  # Policy expressions are CEL (industry-standard, in-process) — core, not optional.
+  # Policy expressions are CEL (industry-standard, in-process): core, not optional.
   "cel-python>=0.2",
-  # Report rendering (HTML via autoescaped templates) — core, not optional.
+  # Report rendering (HTML via autoescaped templates): core, not optional.
   "jinja2>=3.1",
 ]
 
@@ -34,7 +34,7 @@ dependencies = [
 # Collectors are optional so the core stays lean; install what your app uses.
 anthropic = ["anthropic>=0.40"]
 # Also covers Azure OpenAI (openai.AzureOpenAI shares the chat.completions
-# interface) — see src/aire/collectors/openai_sdk.py.
+# interface). See src/aire/collectors/openai_sdk.py.
 openai = ["openai>=1.50"]
 # The collector wraps the BaseCheckpointSaver interface, so it works with any
 # LangGraph app; only the checkpoint packages are needed, not full langgraph.

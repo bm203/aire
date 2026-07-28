@@ -1,5 +1,5 @@
 {% extends "base.html.j2" %}
-{% block title %}AIRE — session {{ session_id }}{% endblock %}
+{% block title %}AIRE: session {{ session_id }}{% endblock %}
 {% block content %}
 <p><a href="/">← overview</a></p>
 <h1>Session <code>{{ session_id }}</code></h1>
@@ -33,7 +33,7 @@
       </td>
       <td>
         {% for c in f.citations %}
-          {{ c.framework }} <strong>{{ c.control_id }}</strong> — {{ c.title }}<br>
+          {{ c.framework }} <strong>{{ c.control_id }}</strong>: {{ c.title }}<br>
         {% endfor %}
         {% if f.unresolved_refs %}
           <span class="meta">⚠ unresolved: {{ f.unresolved_refs | join(", ") }}</span>

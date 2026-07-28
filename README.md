@@ -1,8 +1,8 @@
-# AIRE — AI Runtime Evidence Engine
+# AIRE: AI Runtime Evidence Engine
 
 AIRE is an **observe-only assurance layer** for AI applications. It records
-what an AI system actually did at runtime — prompts, retrieved context, tool
-calls, memory operations, model responses — as **tamper-evident evidence**,
+what an AI system actually did at runtime (prompts, retrieved context, tool
+calls, memory operations, model responses) as **tamper-evident evidence**,
 evaluates that evidence against organizational policies, and produces
 **audit reports whose findings cite named governance controls** (EU AI Act,
 ISO/IEC 42001, NIST AI RMF, OWASP LLM Top 10).
@@ -12,7 +12,7 @@ It answers one question, the way an auditor asks it:
 > *If an auditor asked how this AI system behaved yesterday, what evidence
 > could we provide?*
 
-Every finding is **`finding → evidence pointer → framework citation`** — a
+Every finding is **`finding → evidence pointer → framework citation`**: a
 detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
@@ -28,30 +28,30 @@ The AI-assurance space splits into tools that watch (LLM observability:
 traces and dashboards), tools that block (guardrails and gateways:
 enforcement), and platforms that document (GRC: policy registers and
 process). None of them produce **tamper-evident runtime evidence, evaluated
-against policy, with findings mapped to framework controls** — the artifact a
+against policy, with findings mapped to framework controls**: the artifact a
 real audit needs. AIRE is that missing piece, and it is open source.
 
 What makes it defensible under scrutiny:
 
-- **Observe-only and fail-open** — the sensor never transforms, blocks, or
+- **Observe-only and fail-open**: the sensor never transforms, blocks, or
   breaks the host application. A sensor failure is recorded as evidence, not
   raised as an exception. (This also removes the determinism problem that
   plagues enforcement middleware: nothing is transformed, only recorded.)
-- **Tamper-evident by construction** — the evidence log is append-only
+- **Tamper-evident by construction**: the evidence log is append-only
   (database triggers) and hash-chained (each event carries the previous
   event's SHA-256). `aire verify` detects and localizes any post-hoc edit,
   insertion, deletion, or reordering.
-- **Policies are data, in a real language** — an auditor-friendly YAML
+- **Policies are data, in a real language**: an auditor-friendly YAML
   surface compiled to [CEL](https://cel.dev/) (a sandboxed, industry-standard
   expression language), never a homegrown DSL.
-- **One deep control, done properly** — memory retention & deletion
+- **One deep control, done properly**: memory retention & deletion
   verification: it cross-examines what the app *claimed* (the recorded
   deletion events) against what is *actually stored* (the memory database,
   opened read-only) to answer "was the deleted data really removed?".
-- **Measured, not asserted** — detectors are evaluated against public
+- **Measured, not asserted**: detectors are evaluated against public
   benchmarks (AgentDojo, AgentLeak) with reproducible numbers in
   [`evals/RESULTS.md`](evals/RESULTS.md).
-- **Provider-agnostic by construction** — collectors normalize each SDK's
+- **Provider-agnostic by construction**: collectors normalize each SDK's
   request/response into the same OTel-GenAI-aligned event schema, so
   detectors and policies work unchanged regardless of vendor (Anthropic,
   OpenAI, and Azure OpenAI today).
@@ -62,7 +62,7 @@ What makes it defensible under scrutiny:
 
 ```
    Your AI app (Anthropic or OpenAI/Azure OpenAI SDK + LangGraph memory, or your own stack)
-        │  instrumented — observe-only, fail-open
+        │  instrumented: observe-only, fail-open
         ▼
    Collectors ──────────────►  AuditEvent  (Pydantic; OTel-GenAI-aligned fields)
         │                          │
@@ -77,14 +77,14 @@ What makes it defensible under scrutiny:
         │        └─────────────────┬──────────────────┘
         │                          ▼
         │              findings + policy results
-        │              (appended to the SAME hash chain — evidence too)
+        │              (appended to the SAME hash chain: evidence too)
         ▼                          ▼
    host app unaffected      Report generator  →  JSON · Markdown · HTML
                             finding → evidence pointer → framework citation
 ```
 
 Policy evaluation and detection run **out-of-band** over the stored evidence,
-never inline in the request path — so detection cost is a measurable audit
+never inline in the request path, so detection cost is a measurable audit
 metric, not a latency tax on the host application.
 
 ---
@@ -98,7 +98,7 @@ pip install -e ".[anthropic,langgraph,pii]"
 python -m spacy download en_core_web_sm   # for the PII detector
 ```
 
-**1. Instrument your app** (observe-only — it wraps your client and returns it):
+**1. Instrument your app** (observe-only: it wraps your client and returns it):
 
 ```python
 import anthropic
@@ -115,12 +115,12 @@ with session("customer-42"):          # attribute events to a session
 
 On OpenAI or Azure OpenAI instead, swap the import for
 `aire.collectors.openai_sdk.instrument` and call `client.chat.completions
-.create(...)` — same pattern, same evidence schema (detectors and policies
+.create(...)`: same pattern, same evidence schema (detectors and policies
 don't change; only the collector is provider-specific). Pass
 `system="azure.ai.openai"` when instrumenting an `AzureOpenAI` client.
 
 For LangGraph memory, wrap the checkpointer with
-`aire.collectors.langgraph.InstrumentedSaver` — see
+`aire.collectors.langgraph.InstrumentedSaver`: see
 [`examples/support_agent/`](examples/support_agent/) for a full instrumented
 FastAPI app.
 
@@ -148,7 +148,7 @@ aire dashboard --demo          # a synthetic populated audit, in 60 seconds
 aire dashboard evidence.db     # or your own store
 ```
 
-The dashboard is an auditor-facing viewer over the same evidence — overview →
+The dashboard is an auditor-facing viewer over the same evidence: overview →
 findings triage → session timeline → event drill-down (with hashes). It never
 writes to the store, binds `127.0.0.1`, and serves no scripts or external
 resources. See [`docs/dashboard.md`](docs/dashboard.md).
@@ -160,10 +160,10 @@ resources. See [`docs/dashboard.md`](docs/dashboard.md).
 | Control | What it checks |
 |---|---|
 | **Memory retention & deletion** (deep control) | Was a recorded deletion actually honored in the memory store? Retention age exceeded? PII persisted in memory? Cross-session memory reads? |
-| **PII** | Personal data in prompts, responses, tool results, retrieved context, and memory — via [Microsoft Presidio](https://microsoft.github.io/presidio/). |
+| **PII** | Personal data in prompts, responses, tool results, retrieved context, and memory, via [Microsoft Presidio](https://microsoft.github.io/presidio/). |
 | **Prompt injection** | Direct and indirect (tool-result / retrieved-context) injection via transparent, weighted heuristics. |
 | **Audit-log completeness** | Chain breaks, dropped-event gaps, unmatched request/response pairs. |
-| **Policy engine** | Any organizational rule expressible in CEL over an event — tool allowlists, model inventories, human-review requirements, session attribution, and more. |
+| **Policy engine** | Any organizational rule expressible in CEL over an event: tool allowlists, model inventories, human-review requirements, session attribution, and more. |
 
 Findings map to controls in
 [`docs/framework-mappings.md`](docs/framework-mappings.md) (generated from the
@@ -186,11 +186,11 @@ threat model is in [`SECURITY.md`](SECURITY.md).
 ## Evaluation
 
 Detectors are measured against public benchmarks by an offline replay harness
-(no LLM calls; deterministic and free to reproduce) — see
+(no LLM calls; deterministic and free to reproduce). See
 [`evals/`](evals/) and [`evals/RESULTS.md`](evals/RESULTS.md):
 
-- **AgentDojo** (arXiv 2406.13352) — prompt-injection detection.
-- **AgentLeak** (arXiv 2602.11510) — internal-channel (inter-agent / shared
+- **AgentDojo** (arXiv 2406.13352): prompt-injection detection.
+- **AgentLeak** (arXiv 2602.11510): internal-channel (inter-agent / shared
   memory) PII leakage, the channels an output-only audit structurally cannot
   see.
 
@@ -198,13 +198,13 @@ Detectors are measured against public benchmarks by an offline replay harness
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) — modules, event flow, the hash chain.
-- [Pilot guide](docs/pilot-guide.md) — running AIRE on a real Anthropic + LangGraph app.
-- [Dashboard](docs/dashboard.md) — the local read-only audit viewer.
-- [Policy authoring](docs/policy-authoring.md) — writing YAML/CEL policies.
-- [Framework mappings](docs/framework-mappings.md) — control citations.
-- [Security](SECURITY.md) — threat model and reporting.
-- [Contributing](CONTRIBUTING.md) — dev setup and adding controls.
+- [Architecture](docs/architecture.md): modules, event flow, the hash chain.
+- [Pilot guide](docs/pilot-guide.md): running AIRE on a real Anthropic + LangGraph app.
+- [Dashboard](docs/dashboard.md): the local read-only audit viewer.
+- [Policy authoring](docs/policy-authoring.md): writing YAML/CEL policies.
+- [Framework mappings](docs/framework-mappings.md): control citations.
+- [Security](SECURITY.md): threat model and reporting.
+- [Contributing](CONTRIBUTING.md): dev setup and adding controls.
 
 ## Roadmap (out of v1)
 
@@ -214,4 +214,4 @@ deep controls, and SIEM integration.
 
 ## License
 
-Apache-2.0 — see [`LICENSE`](LICENSE).
+Apache-2.0, see [`LICENSE`](LICENSE).

@@ -20,7 +20,7 @@ Collectors → AuditEvent → EvidenceStore (append-only, hash-chained)
                           build_report → JSON / Markdown / HTML
 ```
 
-Everything downstream of the collectors runs **out-of-band** — over the
+Everything downstream of the collectors runs **out-of-band**: over the
 stored evidence, never in the host application's request path.
 
 ## Modules
@@ -46,13 +46,13 @@ evidence core carries no heavy dependencies.
 
 Every observation is an immutable `AuditEvent` (frozen Pydantic model):
 
-- **Envelope** — `event_id` (ULID, time-sortable), `ts`, `session_id`,
+- **Envelope**: `event_id` (ULID, time-sortable), `ts`, `session_id`,
   `trace_id`, `app`, `event_type`.
-- **Payload** — typed per event type; field names follow the OpenTelemetry
+- **Payload**: typed per event type; field names follow the OpenTelemetry
   GenAI semantic conventions where an equivalent exists
   (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, …), so evidence can
   later be exported to OTel-native backends without renaming.
-- **Chain fields** — `prev_hash` (the previous event's hash) and `hash`
+- **Chain fields**: `prev_hash` (the previous event's hash) and `hash`
   (SHA-256 over this event's canonical JSON, excluding `hash` itself).
 
 Event types cover `llm.request/response`, `tool.call/result`,
@@ -62,13 +62,13 @@ too**, so the audit conclusions are themselves in the tamper-evident chain.
 
 ## Two integrity layers
 
-1. **Append-only at the database level** — triggers abort any `UPDATE` or
+1. **Append-only at the database level**: triggers abort any `UPDATE` or
    `DELETE` on the events table, stopping accidental mutation through the
    normal write path.
-2. **Hash chain** — an attacker with file access can drop the triggers and
+2. **Hash chain**: an attacker with file access can drop the triggers and
    edit rows, but cannot do so without breaking the chain. `verify()` walks
    the chain and reports the first event whose `prev_hash` mismatches its
-   predecessor or whose stored hash doesn't match a recomputation — pinning
+   predecessor or whose stored hash doesn't match a recomputation: pinning
    tampering, insertion, deletion, or reordering to a specific event.
 
 ## Fail-open sensor
@@ -77,7 +77,7 @@ The cardinal rule: **the sensor can never break the host application.**
 Collectors call `Sensor.record()`, which builds the payload and writes to the
 store inside a guard. Any failure is swallowed and counted; the dropped count
 is flushed as a `sensor.dropped` event on the next successful write. Gaps in
-the evidence therefore become evidence — the completeness detector turns them
+the evidence therefore become evidence: the completeness detector turns them
 into findings. Host-application errors always propagate untouched; AIRE only
 ever swallows its *own* failures.
 
@@ -86,9 +86,9 @@ ever swallows its *own* failures.
 `MemoryRetentionControl` is the one control built to interview-defensible
 depth. It cross-examines two independent sources:
 
-- what the app **claimed** — the `memory.delete` / `memory.write` events the
+- what the app **claimed**: the `memory.delete` / `memory.write` events the
   collector recorded in the tamper-evident chain, and
-- what is **actually stored** — the LangGraph checkpointer database, opened
+- what is **actually stored**: the LangGraph checkpointer database, opened
   through a strictly read-only SQLite connection (`mode=ro`).
 
 From that it answers: was a recorded deletion actually honored (do rows
@@ -99,13 +99,13 @@ blob parsing.
 
 ## Extending AIRE
 
-- **A new collector** — wrap the host SDK/framework and call `Sensor.record()`
+- **A new collector**: wrap the host SDK/framework and call `Sensor.record()`
   with the right event type; keep it fail-open.
-- **A new detector** — implement `Detector.inspect(events, store) -> [Finding]`
+- **A new detector**: implement `Detector.inspect(events, store) -> [Finding]`
   and register it with the `DetectorRunner`; emit evidence pointers, not raw
   sensitive values.
-- **A new policy** — write YAML with a CEL `violation` expression (see
+- **A new policy**: write YAML with a CEL `violation` expression (see
   [policy-authoring.md](policy-authoring.md)); no code needed.
-- **A new framework mapping** — add a control to the relevant
+- **A new framework mapping**: add a control to the relevant
   `src/aire/mappings/*.yaml`; the CI ref-integrity test enforces that every
   shipped `framework_ref` resolves.

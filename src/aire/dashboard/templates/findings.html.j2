@@ -1,5 +1,5 @@
 {% extends "base.html.j2" %}
-{% block title %}AIRE — findings{% endblock %}
+{% block title %}AIRE: findings{% endblock %}
 {% block content %}
 <p><a href="/">← overview</a></p>
 <h1>Findings</h1>
@@ -7,7 +7,7 @@
 <p class="meta">Filter by severity:
   <a href="/findings">all</a>
   {% for s in severities %} · <a href="/findings?severity={{ s }}">{{ s }}</a>{% endfor %}
-  {% if severity %} — showing <span class="sev sev-{{ severity }}">{{ severity }}</span>{% endif %}
+  {% if severity %}: showing <span class="sev sev-{{ severity }}">{{ severity }}</span>{% endif %}
 </p>
 
 {% if findings %}
@@ -43,7 +43,7 @@
 {% else %}
 <p class="empty">
   {% if severity %}No findings at severity <strong>{{ severity }}</strong>.
-  {% else %}No findings recorded yet — run <code>aire evaluate</code> and
+  {% else %}No findings recorded yet: run <code>aire evaluate</code> and
     <code>aire detect</code> against this store first.{% endif %}
 </p>
 {% endif %}

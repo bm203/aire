@@ -32,7 +32,7 @@ aire verify support_agent_evidence.db
 ```
 
 Every prompt, response, tool call, tool result, and memory operation is now
-an event in `support_agent_evidence.db` — append-only and hash-chained.
+an event in `support_agent_evidence.db`: append-only and hash-chained.
 Tamper with the file and `aire verify` will name the broken event.
 
 Environment knobs: `AIRE_EXAMPLE_MODEL` (default `claude-opus-4-8`),

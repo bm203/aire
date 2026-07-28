@@ -1,7 +1,7 @@
 # Contributing to AIRE
 
 Thanks for your interest. AIRE is an AI-assurance tool built for regulated,
-industrial use — contributions are held to that bar: correctness, security,
+industrial use: contributions are held to that bar: correctness, security,
 and tests are not optional.
 
 ## Development setup
@@ -37,7 +37,7 @@ pip-compile --all-extras --generate-hashes --strip-extras \
 CI verifies the lock is in sync and runs `pip-audit` against it. See
 [docs/dependency-management.md](docs/dependency-management.md) for the full
 strategy, cooldown policy, and validation steps. Tests that require an optional dependency skip gracefully
-when it is absent, so the core suite runs without the extras — but add the
+when it is absent, so the core suite runs without the extras, but add the
 extras above when working on collectors, the PII detector, or the eval harness.
 
 ## Optional-dependency layout
@@ -56,16 +56,16 @@ extras so a deployment only installs what it uses:
 
 ## Adding a control
 
-- **A detector** — implement `Detector.inspect(events, store) -> list[Finding]`
+- **A detector**: implement `Detector.inspect(events, store) -> list[Finding]`
   in `src/aire/detectors/`. Emit **evidence pointers** (source event ids +
   hashes), never copies of raw sensitive values. Add positive *and* negative
   test cases. Register it in `aire.cli`'s `detect` command.
-- **A policy** — no code: write YAML with a CEL `violation` expression (see
+- **A policy**: no code: write YAML with a CEL `violation` expression (see
   [docs/policy-authoring.md](docs/policy-authoring.md)).
-- **A collector** — wrap the host SDK/framework and call `Sensor.record()`.
+- **A collector**: wrap the host SDK/framework and call `Sensor.record()`.
   It **must be fail-open**: a bug in your collector must never raise into the
   host application. Add a fault-injection test proving it.
-- **A framework mapping** — add the control to the relevant
+- **A framework mapping**: add the control to the relevant
   `src/aire/mappings/*.yaml`. The CI ref-integrity test enforces that every
   `framework_ref` shipped in a policy or detector resolves. Control titles
   must be verified against the published source; do not paste proprietary
@@ -82,7 +82,7 @@ Every change is reviewed against the commitments in
   `eval`/`exec` model- or config-supplied strings.
 - Inspect external stores (e.g. a memory database) **read-only**.
 - Findings, reports, and any generated artifact carry entity types and
-  counts — **never raw PII or secrets**.
+  counts: **never raw PII or secrets**.
 - If you find a vulnerability, please report it privately (see SECURITY.md);
   do not open a public issue with exploit details.
 
@@ -90,7 +90,7 @@ Every change is reviewed against the commitments in
 
 Public docs (`README.md`, `docs/`, `SECURITY.md`) are part of the product.
 `docs/framework-mappings.md` is **generated** from `src/aire/mappings/*.yaml`
-via `aire mappings > docs/framework-mappings.md` — edit the YAML, not the
+via `aire mappings > docs/framework-mappings.md`: edit the YAML, not the
 generated file.
 
 ## Commit and PR conventions

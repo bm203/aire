@@ -1,6 +1,6 @@
 # Dashboard
 
-A local, **read-only** web view over an evidence store — the auditor-facing
+A local, **read-only** web view over an evidence store: the auditor-facing
 surface for the findings, risk, framework citations, and event timeline that
 AIRE records. It adds no detection logic; it renders what `aire evaluate` /
 `aire detect` already produced.
@@ -16,8 +16,8 @@ aire dashboard --demo
 `--demo` builds a **synthetic** industrial IT/OT audit (no API key, no external
 data, no company names), runs the real pipeline over it, and serves it at
 <http://127.0.0.1:8787>. You'll see a critical-risk audit with findings across
-every detector — prompt injection, PII in memory, an unhonored data erasure,
-and policy violations — each linking to its evidence event and framework
+every detector: prompt injection, PII in memory, an unhonored data erasure,
+and policy violations, each linking to its evidence event and framework
 citation.
 
 ## On your own evidence
@@ -43,19 +43,19 @@ Options: `--port` (default 8787), `--title`, `--host` (default `127.0.0.1`).
 The dashboard carries the same posture as the rest of AIRE and is built for
 **local single-user** use:
 
-- **Read-only** — the evidence store is opened OS-level read-only (`mode=ro`);
+- **Read-only**: the evidence store is opened OS-level read-only (`mode=ro`);
   the dashboard cannot write to it. There are no POST routes.
-- **Localhost only, no authentication** — it binds `127.0.0.1` by default and
+- **Localhost only, no authentication**: it binds `127.0.0.1` by default and
   has no login. **Do not expose it publicly.** If you must reach it remotely,
   put it behind an authenticating reverse proxy; binding a non-localhost
   `--host` prints a warning.
-- **No scripts, no external resources** — pages use a same-origin stylesheet
+- **No scripts, no external resources**: pages use a same-origin stylesheet
   and nothing else, enforced by a strict Content-Security-Policy with no
   `script-src` (scripts can never run) and `default-src 'none'`. It renders
   identically air-gapped and never phones home.
-- **Untrusted content is escaped and bounded** — event payloads contain the
+- **Untrusted content is escaped and bounded**: event payloads contain the
   actual prompts and any personal data (the evidence); they are HTML-escaped
-  and size-capped in the UI. This data stays on your machine — the same
+  and size-capped in the UI. This data stays on your machine: the same
   exposure as opening the SQLite file locally.
 
 See [SECURITY.md](../SECURITY.md) for the full threat model.

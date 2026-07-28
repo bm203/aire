@@ -7,7 +7,7 @@ constraint at every level, not a feature.
 
 - **Observe-only, fail-open sensor.** AIRE never transforms, blocks, or
   redacts host-application traffic. Collector failures are swallowed,
-  counted, and surfaced as `sensor.dropped` evidence — never as exceptions
+  counted, and surfaced as `sensor.dropped` evidence, never as exceptions
   in the host app.
 - **Tamper-evident evidence.** The evidence log is append-only (enforced by
   database triggers) and hash-chained (each event carries the previous
@@ -16,7 +16,7 @@ constraint at every level, not a feature.
 - **Evidence is treated as sensitive data.** The store contains prompts,
   model outputs, memory contents, and possibly personal data. Database files
   (including WAL/SHM sidecars) are created with owner-only permissions
-  (0600). Findings record entity types, scores, and offsets — never copies
+  (0600). Findings record entity types, scores, and offsets, never copies
   of the matched values; the evidence pointer identifies the source event.
 - **Never touch the host's data.** Inspection of external stores (e.g. the
   LangGraph checkpointer database) uses strictly read-only connections
@@ -24,11 +24,11 @@ constraint at every level, not a feature.
 - **All scanned content is untrusted.** Prompts, tool results, and retrieved
   context can be adversarial: scan sizes are bounded (DoS), detection
   patterns are precompiled without nested quantifiers (ReDoS), SQL is
-  parameterized throughout, and there is no dynamic code evaluation —
+  parameterized throughout, and there is no dynamic code evaluation: 
   policy expressions run in CEL, a sandboxed expression interpreter with no
   I/O, imports, or side effects.
 - **Crash-safe controls.** A crashing detector becomes a finding ("this
-  control did not run — coverage is incomplete"), because silent gaps in an
+  control did not run: coverage is incomplete"), because silent gaps in an
   audit are worse than reported ones.
 - **Supply-chain hygiene.** Dependencies are pinned and hash-locked
   (`requirements.lock`), scanned for known vulnerabilities in CI
@@ -37,7 +37,7 @@ constraint at every level, not a feature.
 - **The dashboard is a local read-only viewer.** It opens the evidence store
   read-only (cannot write), binds `127.0.0.1` with no authentication, serves
   no scripts or external resources (strict CSP, no `script-src`), and
-  size-bounds/escapes untrusted payloads. It is single-user-local by design —
+  size-bounds/escapes untrusted payloads. It is single-user-local by design: 
   do not expose it publicly without an authenticating reverse proxy. See
   [dashboard.md](docs/dashboard.md).
 

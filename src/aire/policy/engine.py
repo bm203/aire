@@ -158,7 +158,7 @@ class PolicyEngine:
         if violated:
             return PolicyResult(
                 verdict=policy.verdict_on_violation,
-                explanation=f"{policy.description} — violation condition matched.",
+                explanation=f"{policy.description} Violation condition matched.",
                 **common,
             )
         return PolicyResult(

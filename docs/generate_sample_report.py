@@ -114,7 +114,7 @@ def main() -> None:
             ]
         ).run(store)
 
-        report = build_report(store, title="AIRE Audit Report — sample (synthetic data)")
+        report = build_report(store, title="AIRE Audit Report: sample (synthetic data)")
         store.close()
         conn.close()
 
