@@ -17,7 +17,7 @@ detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
 
-> **Status:** v1 feature-complete and tested (178 tests). Apache-2.0.
+> **Status:** v1 feature-complete and tested (189 tests). Apache-2.0.
 > Not yet published to a package index.
 
 ---
@@ -164,6 +164,23 @@ resources. See [`docs/dashboard.md`](docs/dashboard.md).
 | **Prompt injection** | Direct and indirect (tool-result / retrieved-context) injection via transparent, weighted heuristics. |
 | **Audit-log completeness** | Chain breaks, dropped-event gaps, unmatched request/response pairs. |
 | **Policy engine** | Any organizational rule expressible in CEL over an event: tool allowlists, model inventories, human-review requirements, session attribution, and more. |
+
+### Auditing coding agents
+
+Coding agents run shell commands, edit files, and fetch web content on developer
+machines, and most organisations cannot say what one actually did. Claude Code
+writes a JSONL transcript per session, so the evidence already exists locally:
+
+```bash
+aire import-claude-code ~/.claude/projects/<project>/<session>.jsonl evidence.db
+aire evaluate evidence.db -p examples/policies/coding_agent.yaml
+aire detect   evidence.db
+```
+
+This is *imported* evidence rather than observed: the chain proves nothing
+changed after ingestion, not that the transcript itself is faithful. The
+transcript format is internal to Claude Code and carries no stability guarantee,
+so unknown records are skipped and counted rather than treated as errors.
 
 Findings map to controls in
 [`docs/framework-mappings.md`](docs/framework-mappings.md) (generated from the

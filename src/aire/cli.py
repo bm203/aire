@@ -186,6 +186,57 @@ def mappings(
         typer.echo(f"| `{c.ref}` | {c.title} | {link} |")
 
 
+@app.command(name="import-claude-code")
+def import_claude_code(
+    transcript: Annotated[
+        Path, typer.Argument(help="Claude Code session transcript (.jsonl)")
+    ],
+    db: Annotated[Path, typer.Argument(help="Evidence store to append to (created if absent)")],
+    app_name: Annotated[
+        str | None,
+        typer.Option("--app", help="Application name recorded on the events"),
+    ] = None,
+    max_payload_chars: Annotated[
+        int,
+        typer.Option("--max-payload-chars", help="Cap stored tool payloads at this size"),
+    ] = 20_000,
+) -> None:
+    """Import a Claude Code session transcript as audit evidence.
+
+    Coding agents run shell commands, read and write files, and fetch web
+    content on developer machines. Claude Code records each session as JSONL, so
+    this reads that log and maps it onto AIRE's event model; run `aire evaluate`
+    and `aire detect` afterwards to analyse it.
+
+    Note this is *imported* evidence: the hash chain proves nothing changed
+    after AIRE ingested the transcript, not that the transcript itself is
+    faithful. Transcripts commonly live under
+    ~/.claude/projects/<project>/<session-id>.jsonl.
+    """
+    from aire.collectors.claude_code import import_transcript
+    from aire.store import EvidenceStore
+
+    if not transcript.exists():
+        typer.secho(f"error: no such transcript: {transcript}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+
+    store = EvidenceStore(db)
+    try:
+        stats = import_transcript(
+            transcript, store=store, app=app_name, max_payload_chars=max_payload_chars
+        )
+    finally:
+        store.close()
+
+    typer.echo(f"imported {stats.summary()}")
+    if stats.malformed_lines:
+        typer.secho(
+            f"note: {stats.malformed_lines} line(s) could not be parsed and were skipped",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+
 @app.command()
 def evaluate(
     db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],

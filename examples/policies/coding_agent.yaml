@@ -1,0 +1,59 @@
+# Example policies for auditing a coding agent (Claude Code, or any agent with
+# shell and filesystem access).
+#
+# The builtin starter pack is written for the support-agent example and allows a
+# single business tool, so running it against a coding agent flags every call.
+# This pack is a realistic starting point instead: it permits the tools a coding
+# agent legitimately uses and focuses on the ones worth reviewing.
+#
+#   aire evaluate evidence.db -p examples/policies/coding_agent.yaml
+#
+# Tune the lists to your organisation. These are defaults to argue with, not
+# settled policy.
+
+policies:
+  - id: CODING_AGENT_TOOL_ALLOWLIST
+    description: >-
+      A coding agent may only invoke tools on the approved allowlist.
+    severity: high
+    applies_to: [tool.call]
+    params:
+      allowed_tools:
+        - Bash
+        - Read
+        - Edit
+        - Write
+        - Glob
+        - Grep
+        - NotebookEdit
+        - TodoWrite
+        - Task
+        - WebFetch
+        - WebSearch
+    violation: '!(payload["gen_ai.tool.name"] in params.allowed_tools)'
+    framework_refs: ["OWASP-LLM:LLM06", "EU-AI-ACT:Art.14", "NIST-AI-RMF:MANAGE-3.1"]
+
+  - id: EXTERNAL_CONTENT_FETCHED
+    description: >-
+      The agent pulled external web content into its context, which is the
+      primary indirect prompt-injection path for a tool-using agent. Review
+      alongside any injection findings on the same session.
+    severity: medium
+    applies_to: [tool.call]
+    params:
+      network_tools: ["WebFetch", "WebSearch"]
+    violation: 'payload["gen_ai.tool.name"] in params.network_tools'
+    framework_refs: ["OWASP-LLM:LLM01", "NIST-AI-RMF:MEASURE-2.7"]
+
+  - id: MODEL_INVENTORY
+    description: >-
+      Only models on the organisation's approved inventory may be used by
+      development tooling.
+    severity: medium
+    applies_to: [llm.request]
+    params:
+      approved_models:
+        - claude-opus-4-8
+        - claude-sonnet-4-5
+    violation: '!(payload["gen_ai.request.model"] in params.approved_models)'
+    framework_refs: ["EU-AI-ACT:Art.12", "ISO-42001:A.6.2.8"]
