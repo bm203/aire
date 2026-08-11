@@ -1,50 +1,215 @@
-:root { color-scheme: light dark; }
-* { box-sizing: border-box; }
-body {
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-  margin: 0; color: #1a1f24; background: #fbfcfd;
+/* AIRE dashboard styles.
+   No JavaScript, no external resources, no inline styles: bar widths are
+   expressed as utility classes (.pct-*) because the CSP forbids style
+   attributes, and session risk uses the native <meter> element. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #16202a;
+  --ink-soft: #5b6b7a;
+  --line: #dde3e9;
+  --line-soft: #eaeff3;
+  --accent: #1558d6;
+  --ok: #1e7e42;
+  --ok-bg: #e8f5ec;
+  --bad: #c5221f;
+  --bad-bg: #fdecea;
+  --head: #16202a;
 }
-a { color: #1558d6; }
+
+* { box-sizing: border-box; }
+
+body {
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+a { color: var(--accent); }
+
+/* ---- chrome ---- */
+
 .topbar {
-  background: #1a1f24; color: #fff; padding: .6rem 1.2rem; font-weight: 600;
+  background: var(--head);
+  color: #fff;
+  padding: .65rem 1.5rem;
+  font-weight: 600;
+  letter-spacing: .01em;
 }
 .topbar a { color: #fff; text-decoration: none; }
-.topbar .meta { color: #9aa4ad; font-weight: 400; }
-main { max-width: 64rem; margin: 1.5rem auto; padding: 0 1.2rem; }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.15rem; margin-top: 2rem; }
-code { background: #eef1f4; padding: .1em .35em; border-radius: 4px;
-       font-size: .85em; word-break: break-all; }
-.meta { color: #5a656e; font-size: .9em; }
-table { border-collapse: collapse; width: 100%; margin: .8rem 0; font-size: .93em; }
-th, td { border: 1px solid #d5dbe0; padding: .45rem .6rem; text-align: left;
-         vertical-align: top; }
-th { background: #eef1f4; }
-.banner { padding: .7rem 1rem; border-radius: 6px; font-weight: 600; margin: 1rem 0; }
-.ok  { background: #e6f4ea; border: 1px solid #34a853; }
-.bad { background: #fdecea; border: 1px solid #d93025; }
-.empty { color: #5a656e; background: #eef1f4; padding: 1rem; border-radius: 6px; }
-.risk { font-size: 1.05em; }
-.sev { font-weight: 700; text-transform: uppercase; font-size: .78em;
-       padding: .1em .5em; border-radius: 4px; white-space: nowrap; }
-.sev-critical { background: #7a0916; color: #fff; }
-.sev-high     { background: #d93025; color: #fff; }
-.sev-medium   { background: #f5a623; color: #1a1f24; }
-.sev-low      { background: #cfe3f7; color: #1a1f24; }
-.sev-info, .sev-none { background: #e8eaed; color: #1a1f24; }
-.timeline { list-style: none; padding: 0; }
-.timeline li { border-left: 3px solid #d5dbe0; padding: .3rem .8rem; margin: .2rem 0; }
-.etype { font-weight: 600; }
-pre { background: #eef1f4; padding: .7rem; border-radius: 6px; overflow-x: auto;
-      font-size: .82em; max-width: 100%; }
-footer { max-width: 64rem; margin: 3rem auto 2rem; padding: 0 1.2rem;
-         color: #5a656e; font-size: .85em; border-top: 1px solid #d5dbe0;
-         padding-top: .8rem; }
+.topbar .meta { color: #9fb0c0; font-weight: 400; }
+
+main { max-width: 76rem; margin: 1.5rem auto 0; padding: 0 1.5rem; }
+
+.page-head { margin-bottom: 1rem; }
+h1 { font-size: 1.45rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+h2 { font-size: .82rem; margin: 0 0 .9rem; text-transform: uppercase;
+     letter-spacing: .06em; color: var(--ink-soft); font-weight: 700; }
+
+.meta { color: var(--ink-soft); font-size: .87em; }
+code { background: var(--line-soft); padding: .1em .35em; border-radius: 3px;
+       font-size: .86em; word-break: break-all; }
+
+/* ---- cards ---- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1.1rem 1.2rem;
+  margin: 0 0 1.2rem;
+}
+.card-head { display: flex; justify-content: space-between; align-items: baseline; }
+.card-head h2 { margin-bottom: .9rem; }
+.card-head a { font-size: .87em; text-decoration: none; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: start; }
+@media (max-width: 62rem) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ---- banners ---- */
+
+.banner {
+  padding: .75rem 1rem; border-radius: 6px; margin: 0 0 1.2rem;
+  font-size: .92em; border: 1px solid;
+}
+.banner strong { display: inline; }
+.ok  { background: var(--ok-bg);  border-color: #9bd3ae; color: #14532a; }
+.bad { background: var(--bad-bg); border-color: #f0a8a5; color: #7f1d1b; }
+
+/* ---- KPI tiles ---- */
+
+.kpis {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line);
+  border-radius: 6px; overflow: hidden; margin-bottom: 1.2rem;
+}
+@media (max-width: 62rem) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+.kpi { background: var(--surface); padding: 1rem 1.1rem; }
+.kpi-value {
+  display: block; font-size: 1.9rem; font-weight: 650;
+  letter-spacing: -.02em; line-height: 1.1;
+}
+.kpi-ok  { color: var(--ok); }
+.kpi-bad { color: var(--bad); }
+.kpi-label {
+  display: block; margin-top: .3rem; font-size: .78rem;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft);
+}
+
+/* ---- severity distribution bar ---- */
+
+.stackbar {
+  display: flex; height: 1.6rem; border-radius: 4px; overflow: hidden;
+  margin-bottom: 1rem; background: var(--line-soft);
+}
+.seg { display: block; height: 100%; }
+
+/* Width utility classes: the CSP forbids inline styles, so percentages are
+   snapped to 5% steps and applied as classes. */
+.pct-0   { width: 0; }        .pct-5   { width: 5%; }
+.pct-10  { width: 10%; }      .pct-15  { width: 15%; }
+.pct-20  { width: 20%; }      .pct-25  { width: 25%; }
+.pct-30  { width: 30%; }      .pct-35  { width: 35%; }
+.pct-40  { width: 40%; }      .pct-45  { width: 45%; }
+.pct-50  { width: 50%; }      .pct-55  { width: 55%; }
+.pct-60  { width: 60%; }      .pct-65  { width: 65%; }
+.pct-70  { width: 70%; }      .pct-75  { width: 75%; }
+.pct-80  { width: 80%; }      .pct-85  { width: 85%; }
+.pct-90  { width: 90%; }      .pct-95  { width: 95%; }
+.pct-100 { width: 100%; }
+
+.legend { width: auto; }
+.legend td { border: 0; padding: .18rem .9rem .18rem 0; }
+.swatch {
+  display: inline-block; width: .7rem; height: .7rem;
+  border-radius: 2px; margin-right: .4rem; vertical-align: baseline;
+}
+
+/* ---- tables ---- */
+
+table { border-collapse: collapse; width: 100%; font-size: .92em; }
+th, td { border-bottom: 1px solid var(--line-soft); padding: .5rem .6rem;
+         text-align: left; vertical-align: middle; }
+thead th {
+  border-bottom: 1px solid var(--line); font-size: .78rem;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft);
+  font-weight: 700;
+}
+tbody tr:last-child td { border-bottom: 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* matrix heat shading, mirroring a risk grid */
+.matrix td.num { width: 3.6rem; }
+/* control ids are identifiers: never break them mid-token */
+.matrix code { word-break: normal; white-space: nowrap; }
+.heat-0 { color: var(--line); }
+.heat-1 { background: #fdf3e3; }
+.heat-2 { background: #f9dfc0; }
+.heat-3 { background: #f3c69b; }
+.matrix .total { font-weight: 650; }
+.matrix tfoot th { border-top: 1px solid var(--line); border-bottom: 0; color: var(--ink); }
+
+/* session risk meter */
+.risk-col { white-space: nowrap; }
+.riskmeter { width: 7rem; height: .55rem; vertical-align: middle; }
+.riskmeter::-webkit-meter-bar { background: var(--line-soft); border: 0; border-radius: 3px; }
+.riskmeter::-webkit-meter-optimum-value,
+.riskmeter::-webkit-meter-suboptimum-value,
+.riskmeter::-webkit-meter-even-less-good-value { border-radius: 3px; }
+.riskmeter::-webkit-meter-optimum-value { background: #f5a623; }
+.riskmeter::-webkit-meter-suboptimum-value { background: #e8710a; }
+.riskmeter::-webkit-meter-even-less-good-value { background: var(--bad); }
+.riskmeter::-moz-meter-bar { border-radius: 3px; }
+.score { margin-left: .5rem; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
+/* ---- severity chips ---- */
+
+.sev {
+  font-weight: 700; text-transform: uppercase; font-size: .72em;
+  padding: .15em .5em; border-radius: 3px; white-space: nowrap;
+  letter-spacing: .03em;
+}
+.sev-critical, .swatch.sev-critical, .seg.sev-critical { background: #7a0916; color: #fff; }
+.sev-high,     .swatch.sev-high,     .seg.sev-high     { background: #c5221f; color: #fff; }
+.sev-medium,   .swatch.sev-medium,   .seg.sev-medium   { background: #f5a623; color: #16202a; }
+.sev-low,      .swatch.sev-low,      .seg.sev-low      { background: #a9cdf2; color: #16202a; }
+.sev-info, .sev-none, .swatch.sev-info, .seg.sev-info  { background: #dfe4e9; color: #16202a; }
+
+/* ---- misc ---- */
+
+.actions { margin: 0; padding-left: 1.2rem; }
+.actions li { margin: .3rem 0; }
+.empty { color: var(--ink-soft); background: var(--surface);
+         border: 1px dashed var(--line); padding: 1.2rem; border-radius: 6px; }
+
+.timeline { list-style: none; padding: 0; margin: 0; }
+.timeline li { border-left: 3px solid var(--line); padding: .35rem .8rem; margin: .2rem 0; }
+.etype { font-weight: 650; }
+
+pre { background: var(--line-soft); padding: .7rem; border-radius: 4px;
+      overflow-x: auto; font-size: .82em; max-width: 100%; }
+
+footer {
+  max-width: 76rem; margin: 2rem auto 2.5rem; padding: .9rem 1.5rem 0;
+  color: var(--ink-soft); font-size: .84em; border-top: 1px solid var(--line);
+}
+
+/* ---- dark ---- */
+
 @media (prefers-color-scheme: dark) {
-  body { background: #14181c; color: #e7ebee; }
-  main { color: #e7ebee; }
-  code, th, pre, .empty { background: #232a30; }
-  th, td { border-color: #313a42; }
-  .meta { color: #9aa4ad; }
-  a { color: #7aa7ff; }
+  :root {
+    --bg: #10161c; --surface: #182028; --ink: #e6ecf2; --ink-soft: #93a3b3;
+    --line: #2a3641; --line-soft: #212b35; --accent: #7aa7ff;
+    --ok: #6bcf8e; --ok-bg: #14301f; --bad: #f08a86; --bad-bg: #331715;
+    --head: #0b1015;
+  }
+  .ok  { color: #a7e0bb; }
+  .bad { color: #f3aeab; }
+  .heat-1 { background: #33291a; }
+  .heat-2 { background: #4a3620; }
+  .heat-3 { background: #63452a; }
+  .sev-medium { color: #16202a; }
 }

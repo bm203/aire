@@ -31,6 +31,79 @@ _SEVERITIES = ["critical", "high", "medium", "low", "info"]
 _TEMPLATES = Path(__file__).parent / "templates"
 _STATIC = Path(__file__).parent / "static"
 
+# Bar widths are expressed as CSS classes rather than inline styles, because the
+# CSP forbids inline style attributes. Percentages are snapped to 5% steps so a
+# bounded set of utility classes covers every case.
+_PCT_STEP = 5
+
+
+def _pct_class(part: int, total: int) -> str:
+    if total <= 0:
+        return "pct-0"
+    pct = round(part / total * 100 / _PCT_STEP) * _PCT_STEP
+    return f"pct-{max(0, min(100, pct))}"
+
+
+def _severity_bar(report) -> list[dict]:
+    """Segments for the severity distribution bar, widest first."""
+    totals = report.severity_totals or {}
+    total = sum(totals.values())
+    return [
+        {
+            "severity": sev,
+            "count": totals[sev],
+            "pct_class": _pct_class(totals[sev], total),
+            "share": round(totals[sev] / total * 100) if total else 0,
+        }
+        for sev in _SEVERITIES
+        if totals.get(sev)
+    ]
+
+
+def _origin_matrix(report) -> dict:
+    """Findings counted by origin (detector or policy) against severity.
+
+    The same shape a risk matrix takes in a GRC tool: it shows at a glance which
+    control is producing which severity of finding.
+    """
+    counts: dict[str, dict[str, int]] = {}
+    for session in report.sessions:
+        for finding in session.findings:
+            row = counts.setdefault(finding.origin, dict.fromkeys(_SEVERITIES, 0))
+            row[finding.severity.value] = row.get(finding.severity.value, 0) + 1
+
+    rows = []
+    for origin in sorted(counts, key=lambda o: (-sum(counts[o].values()), o)):
+        cells = counts[origin]
+        rows.append(
+            {
+                "origin": origin,
+                "cells": [
+                    {"severity": sev, "count": cells.get(sev, 0), "heat": _heat(cells.get(sev, 0))}
+                    for sev in _SEVERITIES
+                ],
+                "total": sum(cells.values()),
+            }
+        )
+    return {
+        "rows": rows,
+        "totals": [
+            sum(r["cells"][i]["count"] for r in rows) for i in range(len(_SEVERITIES))
+        ],
+        "grand_total": sum(r["total"] for r in rows),
+    }
+
+
+def _heat(count: int) -> str:
+    """Bucket a cell count into a shading class; empty cells stay unshaded."""
+    if count <= 0:
+        return "heat-0"
+    if count == 1:
+        return "heat-1"
+    if count <= 3:
+        return "heat-2"
+    return "heat-3"
+
 # Strict CSP: no script-src at all (scripts can never run), styles/images only
 # from same origin (plus data: images). Defense-in-depth over autoescaping.
 _CSP = (
@@ -106,7 +179,14 @@ def build_app(evidence_db: str | Path, *, title: str = "AIRE Audit Report") -> F
 
     @app.get("/", response_class=HTMLResponse)
     def overview() -> HTMLResponse:
-        return _html("overview.html.j2", report=_report())
+        report = _report()
+        return _html(
+            "overview.html.j2",
+            report=report,
+            severities=_SEVERITIES,
+            severity_bar=_severity_bar(report),
+            matrix=_origin_matrix(report),
+        )
 
     @app.get("/session", response_class=HTMLResponse)
     def session_view(session_id: str = Query(alias="id")) -> HTMLResponse:

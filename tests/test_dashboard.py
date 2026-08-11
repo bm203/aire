@@ -72,7 +72,7 @@ class TestOverview:
         r = c.get("/")
         assert r.status_code == 200
         body = r.text
-        assert "Evidence chain INTACT" in body
+        assert "kpi-ok" in body and "Intact" in body  # chain status reported in the KPI row
         assert "cust-1" in body  # the session
         assert "Overall risk" in body
 
@@ -230,8 +230,9 @@ class TestVerifyAndFilters:
         conn.commit()
         conn.close()
         body = c.get("/").text
-        assert "Evidence chain BROKEN" in body
-        assert "cannot be relied upon" in body
+        assert "chain broken" in body.lower()
+        # the banner must warn against trusting findings when the chain is broken
+        assert "before relying" in body.lower()
 
     def test_findings_triage_lists_across_sessions(self, client):
         c, _ = client
@@ -278,7 +279,7 @@ class TestDemo:
         c = TestClient(build_app(db))
         # overview: critical + chain intact
         overview = c.get("/").text
-        assert "Evidence chain INTACT" in overview
+        assert "kpi-ok" in overview and "Intact" in overview
         # findings across >=3 detectors
         data = c.get("/api/report.json").json()
         origins = {f["origin"] for s in data["sessions"] for f in s["findings"]}
