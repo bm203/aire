@@ -9,7 +9,7 @@ import typer
 
 import aire
 
-app = typer.Typer(help="AIRE — AI Runtime Evidence Engine", no_args_is_help=True)
+app = typer.Typer(help="AIRE: AI Runtime Evidence Engine", no_args_is_help=True)
 
 
 @app.command()
@@ -36,7 +36,7 @@ def dashboard(
     """Serve a local, read-only web dashboard over an evidence store.
 
     Displays the findings, risk, framework citations, and event timeline that
-    `aire evaluate` / `aire detect` already recorded — it never writes to the
+    `aire evaluate` / `aire detect` already recorded. It never writes to the
     store. Binds 127.0.0.1 by default; do not expose it publicly without an
     authenticating reverse proxy. Use `--demo` to build and serve a synthetic
     populated audit for a first look.
@@ -48,7 +48,7 @@ def dashboard(
     except ImportError as exc:
         typer.secho(
             f"error: the dashboard needs the 'dashboard' extra "
-            f"(pip install 'aire[dashboard]') — {exc}",
+            f"(pip install 'aire[dashboard]'): {exc}",
             fg=typer.colors.RED,
             err=True,
         )
@@ -60,12 +60,12 @@ def dashboard(
         try:
             from aire.dashboard.demo import build_demo_store
         except ImportError as exc:
-            typer.secho(f"error: --demo needs extras — {exc}", fg=typer.colors.RED, err=True)
+            typer.secho(f"error: --demo needs extras: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=2) from exc
         tmp = Path(tempfile.mkdtemp(prefix="aire-demo-"))
         typer.echo("building synthetic demo evidence store…")
         db = build_demo_store(tmp / "demo_evidence.db", tmp / "demo_memory.db")
-        title = "AIRE — demo (synthetic data)"
+        title = "AIRE: demo (synthetic data)"
     elif db is None:
         typer.secho("error: pass an evidence DB path, or --demo", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2)
@@ -75,7 +75,7 @@ def dashboard(
 
     if host not in ("127.0.0.1", "localhost", "::1"):
         typer.secho(
-            f"warning: binding {host} exposes the dashboard beyond localhost — "
+            f"warning: binding {host} exposes the dashboard beyond localhost. "
             "it has no authentication; put it behind an authenticating proxy.",
             fg=typer.colors.YELLOW,
             err=True,
@@ -105,7 +105,7 @@ def report(
 
     Reads the findings and policy results recorded by `aire detect` and
     `aire evaluate`. JSON is canonical; Markdown/HTML are renderings of it.
-    Reports may contain sensitive summaries — files are written 0600.
+    Reports may contain sensitive summaries; files are written 0600.
     """
     import os
 
@@ -139,7 +139,7 @@ def report(
         with os.fdopen(fd, "w") as fh:
             fh.write(output)
         typer.secho(
-            f"wrote {out} — overall risk {audit.overall_risk_level.value.upper()} "
+            f"wrote {out}: overall risk {audit.overall_risk_level.value.upper()} "
             f"(score {audit.overall_risk_score}), chain "
             f"{'INTACT' if audit.chain.ok else 'BROKEN'}",
             fg=typer.colors.GREEN if audit.chain.ok else typer.colors.RED,
@@ -182,7 +182,7 @@ def mappings(
             typer.echo(f"\n## {c.framework_name}\n")
             typer.echo("| Control | Title | Reference |")
             typer.echo("|---|---|---|")
-        link = f"[link]({c.url})" if c.url else "—"
+        link = f"[link]({c.url})" if c.url else "n/a"
         typer.echo(f"| `{c.ref}` | {c.title} | {link} |")
 
 
@@ -324,7 +324,7 @@ def verify(
         store.close()
 
     if result.ok:
-        typer.secho(f"OK — chain intact, {result.checked} event(s) verified", fg=typer.colors.GREEN)
+        typer.secho(f"OK: chain intact, {result.checked} event(s) verified", fg=typer.colors.GREEN)
         return
     typer.secho(
         f"TAMPER DETECTED after {result.checked} intact event(s): "
@@ -343,7 +343,7 @@ def detect(
         Path | None,
         typer.Option(
             "--memory-db",
-            help="LangGraph checkpointer DB — enables the memory retention/deletion control "
+            help="LangGraph checkpointer DB, enables the memory retention/deletion control "
             "(opened strictly read-only)",
         ),
     ] = None,
@@ -399,7 +399,7 @@ def detect(
             detectors.append(PIIDetector(scanner=scanner))
         except ImportError:
             typer.secho(
-                "note: PII detector skipped — install 'aire[pii]' and a spaCy model",
+                "note: PII detector skipped; install 'aire[pii]' and a spaCy model",
                 fg=typer.colors.YELLOW,
                 err=True,
             )
@@ -415,7 +415,7 @@ def detect(
             )
         except ImportError:
             typer.secho(
-                "note: memory control skipped — install 'aire[langgraph]'",
+                "note: memory control skipped; install 'aire[langgraph]'",
                 fg=typer.colors.YELLOW,
                 err=True,
             )

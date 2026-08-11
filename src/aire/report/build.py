@@ -21,28 +21,29 @@ from aire.report.models import AuditReport, ChainStatus, ReportFinding, SessionR
 from aire.risk import score_to_level, weight_for
 from aire.store import EvidenceStore
 
-# Recommendations keyed by origin prefix — deliberately generic remediation
-# direction; specifics belong to the organization's own processes.
+# Recommendations keyed by origin prefix. The reader is an auditor, not
+# necessarily an engineer, so each one names the action and avoids implementation
+# vocabulary; the specifics belong to the organization's own processes.
 _RECOMMENDATIONS: dict[str, str] = {
     "memory.retention_deletion": (
-        "Verify the memory stack's deletion and retention behavior; erasure requests "
-        "must remove checkpointer rows, and retention limits need automated enforcement."
+        "Confirm that deletion requests actually remove stored data, and that "
+        "retention limits are enforced automatically."
     ),
     "pii.content": (
-        "Minimize personal data entering prompts and memory; consider redaction before "
-        "persistence and a data-minimization review of the conversation design."
+        "Reduce the personal data reaching prompts and memory, and redact it "
+        "before it is stored."
     ),
     "prompt_injection.heuristic": (
-        "Review flagged interactions for injection; treat tool results and retrieved "
-        "content as untrusted inputs and consider allowlisting tool arguments."
+        "Review the flagged interactions. Treat tool results and retrieved content "
+        "as untrusted input."
     ),
     "audit_log.completeness": (
-        "Investigate evidence gaps: dropped events, unmatched requests, or chain breaks "
-        "reduce what this audit can attest to."
+        "Investigate the evidence gaps. Missing events limit what this audit can "
+        "establish."
     ),
-    "TOOL_": "Review tool governance: align the deployed tool set with the approved allowlist.",
-    "MODEL_": "Align deployed models with the organization's approved model inventory.",
-    "SESSION_": "Ensure every AI interaction is attributed to a session for traceability.",
+    "TOOL_": "Align the tools this system can call with the approved list.",
+    "MODEL_": "Align the models in use with the approved inventory.",
+    "SESSION_": "Attribute every interaction to a session so activity can be traced.",
 }
 
 
@@ -108,7 +109,7 @@ def build_report(
     if not chain.ok:
         recommendations.insert(
             0,
-            "URGENT: the evidence chain is broken — investigate tampering or corruption "
+            "URGENT: the evidence chain is broken. Investigate tampering or corruption "
             "before relying on any other result in this report.",
         )
 

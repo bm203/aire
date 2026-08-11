@@ -35,29 +35,29 @@
 <body>
 <h1>AIRE Audit Report: sample (synthetic data)</h1>
 <p class="meta">
-  Generated 2026-07-28T20:58:09+00:00 by aire 0.1.0 ·
+  Generated 2026-08-11T18:16:23+00:00 by aire 0.1.0 ·
   evidence store <code>evidence.db</code>
   
-  · 15 event(s) in scope
+  · 16 event(s) in scope
 </p>
 
 
-<div class="banner ok">Evidence chain INTACT: 15 event(s) verified</div>
+<div class="banner ok">Evidence chain INTACT: 16 event(s) verified</div>
 
 
 <p class="risk">Overall risk:
   <span class="sev sev-critical">critical</span>
-  (score 49.0)
+  (score 56.0)
   
     · findings by severity:
-    critical: 1, high: 4, medium: 2
+    critical: 1, high: 5, medium: 2
   
 </p>
 
 
 <h2>Session <code>customer-demo</code>:
   <span class="sev sev-critical">critical</span>
-  (score 49.0)</h2>
+  (score 56.0)</h2>
 <table>
   <thead><tr>
     <th>Severity</th><th>Origin</th><th>Finding</th><th>Evidence</th><th>Framework citations</th>
@@ -72,8 +72,8 @@
       <td>
         
           
-            <code>01KYN8AH3BDT3H9V18C4GT70P6</code><br>
-            <span class="meta">sha256 261413e82e39daf4…</span><br>
+            <code>01KZS0MCJ52CZJPCFFTY8BN0VZ</code><br>
+            <span class="meta">sha256 0ec998b57aaf647a…</span><br>
           
         
       </td>
@@ -97,8 +97,8 @@
       <td>
         
           
-            <code>01KYN8AH31G33X6V1Y15RGV5QZ</code><br>
-            <span class="meta">sha256 ad09d993df283afd…</span><br>
+            <code>01KZS0MCHWW8VNCNGNGTF4S8FV</code><br>
+            <span class="meta">sha256 f112cbec1b6dccdc…</span><br>
           
         
       </td>
@@ -122,8 +122,8 @@
       <td>
         
           
-            <code>01KYN8AH323N5Z35S7FWD196JD</code><br>
-            <span class="meta">sha256 97d5dfebe67f50f1…</span><br>
+            <code>01KZS0MCHXZEZDP5RYD7Q2M2R4</code><br>
+            <span class="meta">sha256 f570f5a4c5b66a06…</span><br>
           
         
       </td>
@@ -147,8 +147,8 @@
       <td>
         
           
-            <code>01KYN8AH3AW5NF1CTZ8T65RHB2</code><br>
-            <span class="meta">sha256 54f958a4f20b5d6b…</span><br>
+            <code>01KZS0MCJ32NQ4EH4K56BRM4HF</code><br>
+            <span class="meta">sha256 56a52b0f29c581cc…</span><br>
           
         
       </td>
@@ -170,10 +170,30 @@
       <td><span class="sev sev-high">high</span>
           </td>
       <td><code>memory.retention_deletion</code></td>
+      <td>retention exceeded: thread &#39;customer-demo&#39; holds a checkpoint 33 day(s) old (policy maximum: 30 day(s))</td>
+      <td>
+        
+          <code>01KZS0ME3H6D9G3XBRG3ARA5G8</code>
+        
+      </td>
+      <td>
+        
+          EU-AI-ACT <strong>Art.10</strong>: Data and data governance<br>
+        
+          NIST-AI-RMF <strong>MEASURE-2.10</strong>: Privacy risk of the AI system — as identified in the MAP function — is examined and documented
+        
+        
+      </td>
+    </tr>
+  
+    <tr>
+      <td><span class="sev sev-high">high</span>
+          </td>
+      <td><code>memory.retention_deletion</code></td>
       <td>personal data stored in memory: thread &#39;customer-demo&#39; latest checkpoint contains EMAIL_ADDRESS×1</td>
       <td>
         
-          <code>01KYN8AJE4G5BNXVSKREVCW62D</code>
+          <code>01KZS0ME3K4B3QKV1JV4DMH9PT</code>
         
       </td>
       <td>
@@ -196,8 +216,8 @@
       <td>
         
           
-            <code>01KYN8AH2Y2QX6QG83S69EA9R1</code><br>
-            <span class="meta">sha256 b531e5449494cee6…</span><br>
+            <code>01KZS0MCHTV978FE9RG1SKBN2K</code><br>
+            <span class="meta">sha256 c368a2b50158ec49…</span><br>
           
         
       </td>
@@ -221,8 +241,8 @@
       <td>
         
           
-            <code>01KYN8AH2Y2QX6QG83S69EA9R1</code><br>
-            <span class="meta">sha256 b531e5449494cee6…</span><br>
+            <code>01KZS0MCHTV978FE9RG1SKBN2K</code><br>
+            <span class="meta">sha256 c368a2b50158ec49…</span><br>
           
         
       </td>
@@ -247,7 +267,7 @@
 
 <h2>Recommendations</h2>
 <ul>
-  <li>Align deployed models with the organization&#39;s approved model inventory.</li><li>Minimize personal data entering prompts and memory; consider redaction before persistence and a data-minimization review of the conversation design.</li><li>Review flagged interactions for injection; treat tool results and retrieved content as untrusted inputs and consider allowlisting tool arguments.</li><li>Review tool governance: align the deployed tool set with the approved allowlist.</li><li>Verify the memory stack&#39;s deletion and retention behavior; erasure requests must remove checkpointer rows, and retention limits need automated enforcement.</li>
+  <li>Align the models in use with the approved inventory.</li><li>Align the tools this system can call with the approved list.</li><li>Confirm that deletion requests actually remove stored data, and that retention limits are enforced automatically.</li><li>Reduce the personal data reaching prompts and memory, and redact it before it is stored.</li><li>Review the flagged interactions. Treat tool results and retrieved content as untrusted input.</li>
 </ul>
 
 
