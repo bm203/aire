@@ -20,6 +20,12 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
+    # Update the lockfile, not the ranges in pyproject.toml. AIRE declares loose
+    # ranges so consumers are not over-constrained, and pins exact versions in
+    # requirements.lock; raising a declared floor to match a pin we already have
+    # forces that constraint on every downstream user for no functional gain.
+    # See docs/dependency-management.md.
+    versioning-strategy: lockfile-only
 
   - package-ecosystem: "github-actions"
     directory: "/"
