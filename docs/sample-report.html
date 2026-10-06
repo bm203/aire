@@ -35,14 +35,14 @@
 <body>
 <h1>AIRE Audit Report: sample (synthetic data)</h1>
 <p class="meta">
-  Generated 2026-08-11T18:16:23+00:00 by aire 0.1.0 ·
+  Generated 2026-10-06T20:12:27+00:00 by aire 0.1.0 ·
   evidence store <code>evidence.db</code>
   
   · 16 event(s) in scope
 </p>
 
 
-<div class="banner ok">Evidence chain INTACT: 16 event(s) verified</div>
+<div class="banner ok">Evidence chain INTACT: 16 event(s) verified. Head <code>16:6e0aedd648de915f3bf904712178979b682699915a6d92f4ed42b4e4b1a637dd</code></div>
 
 
 <p class="risk">Overall risk:
@@ -72,8 +72,8 @@
       <td>
         
           
-            <code>01KZS0MCJ52CZJPCFFTY8BN0VZ</code><br>
-            <span class="meta">sha256 0ec998b57aaf647a…</span><br>
+            <code>01M49DH5N1TZMRHGG4Q75Q63GE</code><br>
+            <span class="meta">sha256 28ebaec0ca64a1ae…</span><br>
           
         
       </td>
@@ -97,8 +97,8 @@
       <td>
         
           
-            <code>01KZS0MCHWW8VNCNGNGTF4S8FV</code><br>
-            <span class="meta">sha256 f112cbec1b6dccdc…</span><br>
+            <code>01M49DH5MN5KZ7T4WW31ACMBDN</code><br>
+            <span class="meta">sha256 a92e346f18ae9b38…</span><br>
           
         
       </td>
@@ -122,8 +122,8 @@
       <td>
         
           
-            <code>01KZS0MCHXZEZDP5RYD7Q2M2R4</code><br>
-            <span class="meta">sha256 f570f5a4c5b66a06…</span><br>
+            <code>01M49DH5MPK5E16SXHX9QFN2VH</code><br>
+            <span class="meta">sha256 a78b759ae32b9398…</span><br>
           
         
       </td>
@@ -147,8 +147,8 @@
       <td>
         
           
-            <code>01KZS0MCJ32NQ4EH4K56BRM4HF</code><br>
-            <span class="meta">sha256 56a52b0f29c581cc…</span><br>
+            <code>01M49DH5MZXKJCNX131VPJ60YZ</code><br>
+            <span class="meta">sha256 6ec47692c0422bff…</span><br>
           
         
       </td>
@@ -170,10 +170,10 @@
       <td><span class="sev sev-high">high</span>
           </td>
       <td><code>memory.retention_deletion</code></td>
-      <td>retention exceeded: thread &#39;customer-demo&#39; holds a checkpoint 33 day(s) old (policy maximum: 30 day(s))</td>
+      <td>retention exceeded: thread &#39;customer-demo&#39; holds a checkpoint 89 day(s) old (policy maximum: 30 day(s))</td>
       <td>
         
-          <code>01KZS0ME3H6D9G3XBRG3ARA5G8</code>
+          <code>01M49DH6XX2XW63V61D4N62MAE</code>
         
       </td>
       <td>
@@ -193,7 +193,7 @@
       <td>personal data stored in memory: thread &#39;customer-demo&#39; latest checkpoint contains EMAIL_ADDRESS×1</td>
       <td>
         
-          <code>01KZS0ME3K4B3QKV1JV4DMH9PT</code>
+          <code>01M49DH6XYPBFD6WNQGWK89HS3</code>
         
       </td>
       <td>
@@ -216,8 +216,8 @@
       <td>
         
           
-            <code>01KZS0MCHTV978FE9RG1SKBN2K</code><br>
-            <span class="meta">sha256 c368a2b50158ec49…</span><br>
+            <code>01M49DH5MJWEY6XRGDTVD0J0W9</code><br>
+            <span class="meta">sha256 83eb200a080050ef…</span><br>
           
         
       </td>
@@ -241,8 +241,8 @@
       <td>
         
           
-            <code>01KZS0MCHTV978FE9RG1SKBN2K</code><br>
-            <span class="meta">sha256 c368a2b50158ec49…</span><br>
+            <code>01M49DH5MJWEY6XRGDTVD0J0W9</code><br>
+            <span class="meta">sha256 83eb200a080050ef…</span><br>
           
         
       </td>
@@ -275,6 +275,8 @@
   Findings are statements of detected conditions with evidence pointers, not a
   compliance certification. Evidence event ids and SHA-256 hashes refer to the
   append-only, hash-chained store; verify integrity with <code>aire verify</code>.
+  Keep this report: its chain head lets <code>aire verify --expect-head</code>
+  detect any later rewrite of the evidence it covers.
   This document is self-contained (no scripts, no external resources).
 </footer>
 </body>

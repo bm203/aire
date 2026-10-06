@@ -17,7 +17,7 @@ detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
 
-> **Status:** v1 feature-complete and tested (210 tests). Apache-2.0.
+> **Status:** v1 feature-complete and tested (221 tests). Apache-2.0.
 > Not yet published to a package index.
 
 ---
@@ -27,9 +27,14 @@ gives auditors verifiable evidence and leaves judgment to them.
 The AI-assurance space splits into tools that watch (LLM observability:
 traces and dashboards), tools that block (guardrails and gateways:
 enforcement), and platforms that document (GRC: policy registers and
-process). None of them produce **tamper-evident runtime evidence, evaluated
-against policy, with findings mapped to framework controls**: the artifact a
-real audit needs. AIRE is that missing piece, and it is open source.
+process). **Runtime evidence**, a tamper-evident record of what an AI system
+actually did, is emerging as a category of its own, with open standards and
+formats (see [Related work](#related-work)) and commercial products.
+
+AIRE is an open-source engine in that category, built around the
+**evidence-to-control chain**: it collects runtime evidence, evaluates it
+against your policies, checks the application's claims against real system
+state, and maps each finding to the governance control it relates to.
 
 What makes it defensible under scrutiny:
 
@@ -37,10 +42,14 @@ What makes it defensible under scrutiny:
   breaks the host application. A sensor failure is recorded as evidence, not
   raised as an exception. (This also removes the determinism problem that
   plagues enforcement middleware: nothing is transformed, only recorded.)
-- **Tamper-evident by construction**: the evidence log is append-only
+- **Tamper-evident, with a stated limit**: the evidence log is append-only
   (database triggers) and hash-chained (each event carries the previous
-  event's SHA-256). `aire verify` detects and localizes any post-hoc edit,
-  insertion, deletion, or reordering.
+  event's SHA-256). `aire verify` detects and localizes edits, insertions,
+  deletions, and reordering that leave the chain inconsistent, and prints the
+  chain head. The chain uses no secret, so someone with write access could
+  rebuild a consistent chain. Recording the head outside the machine (every
+  report carries it) and passing it to `aire verify --expect-head` detects any
+  such rewrite up to that point. Signed heads are on the roadmap.
 - **Policies are data, in a real language**: an auditor-friendly YAML
   surface compiled to [CEL](https://cel.dev/) (a sandboxed, industry-standard
   expression language), never a homegrown DSL.
@@ -85,7 +94,9 @@ What makes it defensible under scrutiny:
 
 Policy evaluation and detection run **out-of-band** over the stored evidence,
 never inline in the request path, so detection cost is a measurable audit
-metric, not a latency tax on the host application.
+metric, not a latency tax on the host application. Recording itself is a
+synchronous local write, about 1 ms per event in the overhead measurement in
+[`evals/RESULTS.md`](evals/RESULTS.md).
 
 ---
 
@@ -224,6 +235,29 @@ Detectors are measured against public benchmarks by an offline replay harness
 
 ---
 
+## Related work
+
+AIRE is one of several independent efforts on verifiable runtime evidence for
+AI systems:
+
+- **[OVERT](https://overt.is/)**: an open standard specifying how to produce
+  independently verifiable runtime evidence, including attestation assurance
+  levels and content-safe records. AIRE does not claim OVERT conformance.
+- **[AIREP](https://github.com/halvrenofviryel/ai-runtime-evidence-protocol)**
+  ([arXiv:2608.21363](https://arxiv.org/abs/2608.21363)): a signed,
+  hash-linked evidence record format separating decision, control, execution,
+  and effect. A format rather than an engine; a possible export target for AIRE
+  once it stabilizes.
+- Research on signed, hash-chained agent audit trails, e.g.
+  [*Auditable Agents*](https://arxiv.org/abs/2604.05485) and
+  [*Aegis*](https://arxiv.org/abs/2603.16938).
+
+What AIRE adds is the engine around the evidence: collectors for real
+applications and coding agents, policy evaluation, detectors, and deep controls
+that check an application's claims against the actual system state.
+
+---
+
 ## Documentation
 
 - [Architecture](docs/architecture.md): modules, event flow, the hash chain.
@@ -236,9 +270,10 @@ Detectors are measured against public benchmarks by an offline replay harness
 
 ## Roadmap (out of v1)
 
-Enforcement mode (blocking/redaction), governance dashboards, additional
-collectors (LiteLLM, Google Gemini), OTLP export, PostgreSQL storage, more
-deep controls, and SIEM integration.
+Signed chain heads and external anchoring, enforcement mode
+(blocking/redaction), governance dashboards, additional collectors (LiteLLM,
+Google Gemini), OTLP export, PostgreSQL storage, more deep controls, and SIEM
+integration.
 
 ## License
 

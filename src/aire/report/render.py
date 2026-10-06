@@ -37,25 +37,26 @@ def to_markdown(report: AuditReport) -> str:
         "## Evidence chain",
         "",
         (
-            f"**INTACT** — {report.chain.events_verified} event(s) verified"
+            f"**INTACT**: {report.chain.events_verified} event(s) verified. "
+            f"Head `{report.chain.head}`"
             if report.chain.ok
-            else f"**BROKEN at seq {report.chain.first_bad_seq}** — {report.chain.reason}"
+            else f"**BROKEN at seq {report.chain.first_bad_seq}**: {report.chain.reason}"
         ),
         "",
         "## Overall risk",
         "",
         f"**{report.overall_risk_level.value.upper()}** (score {report.overall_risk_score})"
         + (
-            " — severity totals: "
+            "; severity totals: "
             + ", ".join(f"{k}: {v}" for k, v in sorted(report.severity_totals.items()))
             if report.severity_totals
-            else " — no findings"
+            else "; no findings"
         ),
         "",
     ]
     for session in report.sessions:
         lines += [
-            f"## Session `{_md(session.session_id)}` — risk "
+            f"## Session `{_md(session.session_id)}`, risk "
             f"{session.risk_level.value.upper()} ({session.risk_score})",
             "",
             "| Severity | Origin | Finding | Evidence | Frameworks |",
@@ -84,9 +85,11 @@ def to_markdown(report: AuditReport) -> str:
     lines += [
         "---",
         "",
-        "*Findings are statements of detected conditions with evidence pointers — "
+        "*Findings are statements of detected conditions with evidence pointers, "
         "not a compliance certification. Evidence event ids and hashes refer to the "
-        "append-only, hash-chained store; verify with `aire verify`.*",
+        "append-only, hash-chained store; verify with `aire verify`. Keep this report: "
+        "its chain head lets `aire verify --expect-head` detect any later rewrite of "
+        "the evidence it covers.*",
     ]
     return "\n".join(lines)
 

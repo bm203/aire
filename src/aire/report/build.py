@@ -62,6 +62,7 @@ def build_report(
         events_verified=verification.checked,
         first_bad_seq=verification.first_bad_seq,
         reason=verification.reason,
+        head=verification.head,
     )
 
     all_events = list(store.events(session_id=session_id))

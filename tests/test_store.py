@@ -31,6 +31,33 @@ def raw_conn(store: EvidenceStore) -> sqlite3.Connection:
     return sqlite3.connect(store.path)
 
 
+def rewrite_chain(store: EvidenceStore, mutate=None, drop_seqs=()) -> None:
+    """Forge history the way someone with write access could: drop the
+    append-only triggers, change or remove events, then recompute every later
+    hash so the chain is internally consistent again. The chain has no secret,
+    so nothing stops this; only an anchor recorded elsewhere can reveal it."""
+    events = list(store.events())
+    with raw_conn(store) as conn:
+        for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'"):
+            conn.execute(f"DROP TRIGGER {name}")
+        rows = dict(conn.execute("SELECT event_id, seq FROM events"))
+        for seq in drop_seqs:
+            conn.execute("DELETE FROM events WHERE seq = ?", (seq,))
+        prev = GENESIS_HASH
+        for event in events:
+            if rows[event.event_id] in drop_seqs:
+                continue
+            payload = mutate(dict(event.payload)) if mutate else event.payload
+            forged = event.model_copy(update={"payload": payload, "prev_hash": prev})
+            new_hash = forged.compute_hash()
+            conn.execute(
+                "UPDATE events SET payload = ?, prev_hash = ?, hash = ? WHERE event_id = ?",
+                (json.dumps(payload, sort_keys=True), prev, new_hash, event.event_id),
+            )
+            prev = new_hash
+        conn.commit()
+
+
 class TestAppend:
     def test_chain_links(self, store):
         events = fill(store)
@@ -134,6 +161,57 @@ class TestVerify:
         assert not store.verify().ok
 
 
+class TestAnchoring:
+    """The chain alone proves internal consistency; an anchor proves history."""
+
+    def test_verify_reports_head(self, store):
+        assert store.verify().head is None  # empty store
+        events = fill(store, 3)
+        result = store.verify()
+        assert result.head == f"3:{events[-1].hash}"
+        assert not result.anchor_checked
+
+    def test_rewritten_chain_passes_alone_but_fails_against_anchor(self, store):
+        fill(store, 5)
+        recorded = store.verify().head
+        rewrite_chain(store, mutate=lambda p: {**p, "i": 999} if p["i"] == 2 else p)
+        # The documented limitation: a full rewrite is internally consistent.
+        assert store.verify().ok
+        result = store.verify(expect_head=recorded)
+        assert not result.ok
+        assert result.reason.startswith("anchor mismatch")
+        assert result.first_bad_seq == 5
+
+    def test_removed_event_with_recomputed_chain_fails_against_anchor(self, store):
+        fill(store, 5)
+        recorded = store.verify().head
+        rewrite_chain(store, drop_seqs=(2,))
+        assert store.verify().ok
+        assert not store.verify(expect_head=recorded).ok
+
+    def test_truncation_through_the_anchor_is_detected(self, store):
+        fill(store, 5)
+        recorded = store.verify().head
+        rewrite_chain(store, drop_seqs=(4, 5))
+        result = store.verify(expect_head=recorded)
+        assert not result.ok
+        assert result.reason.startswith("anchor not found")
+
+    def test_events_appended_after_the_anchor_still_verify(self, store):
+        fill(store, 3)
+        recorded = store.verify().head
+        fill(store, 2)
+        result = store.verify(expect_head=recorded)
+        assert result.ok and result.anchor_checked
+        assert result.head.startswith("5:")
+
+    @pytest.mark.parametrize("bad", ["", "abc", "5", "x:" + "a" * 64, "5:" + "a" * 63])
+    def test_malformed_anchor_is_rejected(self, store, bad):
+        fill(store, 1)
+        with pytest.raises(ValueError, match="anchor must look like"):
+            store.verify(expect_head=bad)
+
+
 class TestCli:
     def test_verify_command(self, store, tmp_path):
         from typer.testing import CliRunner
@@ -155,6 +233,30 @@ class TestCli:
 
         missing = runner.invoke(app, ["verify", str(tmp_path / "nope.db")])
         assert missing.exit_code == 2
+
+
+    def test_verify_prints_head_and_checks_anchor(self, store):
+        from typer.testing import CliRunner
+
+        from aire.cli import app
+
+        fill(store, 3)
+        runner = CliRunner()
+        first = runner.invoke(app, ["verify", str(store.path)])
+        lines = first.output.splitlines()
+        head = next(line.split("head: ")[1] for line in lines if line.startswith("head: "))
+        assert "internal consistency only" in first.output
+
+        anchored = runner.invoke(app, ["verify", str(store.path), "--expect-head", head])
+        assert anchored.exit_code == 0 and f"anchor {head} matches" in anchored.output
+
+        rewrite_chain(store, mutate=lambda p: {**p, "i": -1})
+        assert runner.invoke(app, ["verify", str(store.path)]).exit_code == 0
+        forged = runner.invoke(app, ["verify", str(store.path), "--expect-head", head])
+        assert forged.exit_code == 1 and "anchor mismatch" in forged.output
+
+        malformed = runner.invoke(app, ["verify", str(store.path), "--expect-head", "nope"])
+        assert malformed.exit_code == 2
 
 
 class TestReadOnly:

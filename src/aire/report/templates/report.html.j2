@@ -42,7 +42,7 @@
 </p>
 
 {% if report.chain.ok %}
-<div class="banner ok">Evidence chain INTACT: {{ report.chain.events_verified }} event(s) verified</div>
+<div class="banner ok">Evidence chain INTACT: {{ report.chain.events_verified }} event(s) verified. Head <code>{{ report.chain.head }}</code></div>
 {% else %}
 <div class="banner bad">Evidence chain BROKEN at seq {{ report.chain.first_bad_seq }}:
   {{ report.chain.reason }} · findings below cannot be relied upon until investigated</div>
@@ -109,6 +109,8 @@
   Findings are statements of detected conditions with evidence pointers, not a
   compliance certification. Evidence event ids and SHA-256 hashes refer to the
   append-only, hash-chained store; verify integrity with <code>aire verify</code>.
+  Keep this report: its chain head lets <code>aire verify --expect-head</code>
+  detect any later rewrite of the evidence it covers.
   This document is self-contained (no scripts, no external resources).
 </footer>
 </body>

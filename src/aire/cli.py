@@ -355,26 +355,55 @@ def evaluate(
 @app.command()
 def verify(
     db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
+    expect_head: Annotated[
+        str | None,
+        typer.Option(
+            "--expect-head",
+            help="A head (<seq>:<hash>) printed by an earlier verify and stored elsewhere; "
+            "fails if history up to that point was rewritten or removed",
+        ),
+    ] = None,
 ) -> None:
     """Verify the integrity of an evidence store's hash chain.
 
-    Exit code 0 if the chain is intact, 1 if tampering or a chain break is
-    detected, 2 if the store cannot be opened.
+    Prints the chain head. On its own, verification proves the chain is
+    internally consistent. To detect a deliberate rewrite by someone with write
+    access, record the printed head somewhere that person cannot change (a
+    ticket, an email, a git commit, write-once storage) and later pass it to
+    --expect-head.
+
+    Exit code 0 if the chain is intact (and matches the anchor, if given), 1 if
+    tampering, a chain break, or an anchor mismatch is detected, 2 if the store
+    cannot be opened or the anchor is malformed.
     """
-    from aire.store import EvidenceStore
+    from aire.store import EvidenceStore, parse_anchor
 
     if not db.exists():
         typer.secho(f"error: no such file: {db}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=2)
+    if expect_head is not None:
+        try:
+            parse_anchor(expect_head)
+        except ValueError as exc:
+            typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=2) from exc
 
-    store = EvidenceStore(db)
+    store = EvidenceStore(db, read_only=True)
     try:
-        result = store.verify()
+        result = store.verify(expect_head=expect_head)
     finally:
         store.close()
 
     if result.ok:
         typer.secho(f"OK: chain intact, {result.checked} event(s) verified", fg=typer.colors.GREEN)
+        if result.anchor_checked:
+            typer.secho(f"anchor {expect_head} matches", fg=typer.colors.GREEN)
+        typer.echo(f"head: {result.head or '(empty store)'}")
+        if not result.anchor_checked:
+            typer.echo(
+                "note: this proves internal consistency only. Record the head outside this "
+                "machine and pass it to --expect-head later to detect a rewritten chain."
+            )
         return
     typer.secho(
         f"TAMPER DETECTED after {result.checked} intact event(s): "

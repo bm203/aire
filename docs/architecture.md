@@ -61,16 +61,24 @@ Event types cover `llm.request/response`, `tool.call/result`,
 `finding`, and `sensor.dropped`. **Findings and policy results are events
 too**, so the audit conclusions are themselves in the tamper-evident chain.
 
-## Two integrity layers
+## Integrity layers
 
 1. **Append-only at the database level**: triggers abort any `UPDATE` or
    `DELETE` on the events table, stopping accidental mutation through the
    normal write path.
-2. **Hash chain**: an attacker with file access can drop the triggers and
-   edit rows, but cannot do so without breaking the chain. `verify()` walks
-   the chain and reports the first event whose `prev_hash` mismatches its
-   predecessor or whose stored hash doesn't match a recomputation: pinning
-   tampering, insertion, deletion, or reordering to a specific event.
+2. **Hash chain**: each event carries its predecessor's hash. `verify()`
+   walks the chain and reports the first event whose `prev_hash` mismatches
+   its predecessor or whose stored hash doesn't match a recomputation: pinning
+   an inconsistent edit, insertion, deletion, or reordering to a specific
+   event. The chain uses no secret, so someone with file access can drop the
+   triggers, edit rows, and recompute every later hash; the result is
+   internally consistent.
+3. **Anchored heads**: `verify()` returns the head as `seq:hash`. Recorded
+   outside the writer's reach (every report carries it), it is passed back as
+   `verify(expect_head=...)` / `aire verify --expect-head`. A rewrite, removal,
+   or renumbering at or before the anchored event then fails, while events
+   appended afterwards verify normally. Key-managed signing of heads is the
+   roadmap step that removes the need to store heads by hand.
 
 ## Fail-open sensor
 

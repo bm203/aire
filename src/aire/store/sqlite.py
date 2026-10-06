@@ -14,6 +14,7 @@ Two independent integrity layers:
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -47,6 +48,9 @@ BEGIN SELECT RAISE(ABORT, 'evidence log is append-only'); END;
 _COLUMNS = "event_id, ts, session_id, trace_id, app, event_type, payload, prev_hash, hash"
 
 
+_ANCHOR = re.compile(r"(\d+):([0-9a-f]{64})")
+
+
 @dataclass
 class VerificationResult:
     ok: bool
@@ -54,6 +58,19 @@ class VerificationResult:
     first_bad_seq: int | None = None
     first_bad_event_id: str | None = None
     reason: str | None = None
+    # The chain head after a successful walk, as ``seq:hash``. Recording it
+    # somewhere the store's writer cannot reach turns internal consistency into
+    # tamper evidence for everything up to that point (see ``verify``).
+    head: str | None = None
+    anchor_checked: bool = False
+
+
+def parse_anchor(anchor: str) -> tuple[int, str]:
+    """Parse a recorded head of the form ``seq:hash``."""
+    m = _ANCHOR.fullmatch(anchor.strip().lower())
+    if not m:
+        raise ValueError(f"anchor must look like <seq>:<64 hex chars>, got {anchor!r}")
+    return int(m.group(1)), m.group(2)
 
 
 class EvidenceStore:
@@ -171,10 +188,23 @@ class EvidenceStore:
         row = self._conn.execute("SELECT hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
         return row[0] if row else GENESIS_HASH
 
-    def verify(self) -> VerificationResult:
-        """Walk the full chain; report the first broken link, if any."""
+    def verify(self, expect_head: str | None = None) -> VerificationResult:
+        """Walk the full chain; report the first broken link, if any.
+
+        Without ``expect_head`` this proves the chain is internally consistent:
+        it catches accidental edits and naive tampering. It cannot catch someone
+        with write access who rewrites events and recomputes every later hash,
+        because the chain uses no secret. ``expect_head`` closes that gap up to
+        a recorded point: pass a head (``seq:hash``) printed by an earlier
+        verification and stored outside the writer's reach. Any rewrite,
+        removal, or reordering at or before that point then fails, while events
+        appended afterwards still verify normally.
+        """
+        anchor = parse_anchor(expect_head) if expect_head is not None else None
         expected_prev = GENESIS_HASH
         checked = 0
+        head: str | None = None
+        anchor_seen = False
         for seq, *row in self._conn.execute(
             f"SELECT seq, {_COLUMNS} FROM events ORDER BY seq"
         ):
@@ -198,9 +228,35 @@ class EvidenceStore:
                     first_bad_event_id=event.event_id,
                     reason="content tamper: stored hash does not match recomputed hash",
                 )
+            if anchor is not None and seq == anchor[0]:
+                if event.hash != anchor[1]:
+                    return VerificationResult(
+                        ok=False,
+                        checked=checked,
+                        first_bad_seq=seq,
+                        first_bad_event_id=event.event_id,
+                        reason=(
+                            "anchor mismatch: the event at the recorded head differs "
+                            "from the recorded hash (history up to this point was rewritten)"
+                        ),
+                    )
+                anchor_seen = True
             expected_prev = event.hash
+            head = f"{seq}:{event.hash}"
             checked += 1
-        return VerificationResult(ok=True, checked=checked)
+        if anchor is not None and not anchor_seen:
+            return VerificationResult(
+                ok=False,
+                checked=checked,
+                first_bad_seq=anchor[0],
+                reason=(
+                    "anchor not found: no event exists at the recorded head "
+                    "(events were removed or renumbered)"
+                ),
+            )
+        return VerificationResult(
+            ok=True, checked=checked, head=head, anchor_checked=anchor is not None
+        )
 
     @staticmethod
     def _row_to_event(row: sqlite3.Row | tuple) -> AuditEvent:

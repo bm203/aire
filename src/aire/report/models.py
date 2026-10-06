@@ -49,6 +49,10 @@ class ChainStatus(BaseModel):
     events_verified: int
     first_bad_seq: int | None = None
     reason: str | None = None
+    # Chain head (seq:hash) when intact. A delivered report carries it out of
+    # the machine, so the report itself can serve as an anchor for a later
+    # `aire verify --expect-head`.
+    head: str | None = None
 
 
 class AuditReport(BaseModel):

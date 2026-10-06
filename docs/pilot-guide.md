@@ -19,8 +19,9 @@ An IT/OT security team will ask these before you touch their app. The answers
 are design properties, not promises:
 
 - **It cannot break the app.** The sensor is **observe-only and fail-open**:
-  it wraps the client and returns it unchanged; it never blocks, transforms, or
-  delays a call. If the sensor itself errors, that becomes a recorded
+  it wraps the client and returns it unchanged; it never blocks or transforms
+  a call. Recording is a synchronous local write of about 1 ms per event
+  (measured in `evals/RESULTS.md`). If the sensor itself errors, that becomes a recorded
   finding, never an exception in the host. (See [SECURITY.md](../SECURITY.md).)
 - **It never writes to their data.** The app's memory store is inspected
   **strictly read-only** (`mode=ro`); AIRE has its own separate evidence DB.
@@ -111,7 +112,7 @@ instead of `--builtin`: see [policy authoring](policy-authoring.md).
 ## Step 4: Deliver the evidence
 
 ```bash
-aire verify evidence.db                       # confirm the chain is intact
+aire verify evidence.db                       # confirm the chain is intact; prints the head
 aire report evidence.db --out audit.html      # the hand-off artifact (also md/json)
 aire dashboard evidence.db                     # or browse it interactively (localhost)
 ```
@@ -119,8 +120,11 @@ aire dashboard evidence.db                     # or browse it interactively (loc
 Walk the app owners through it the way an auditor would: overall risk and the
 **intact chain** first (the evidence is trustworthy), then each finding →
 its **evidence pointer** (the event id + SHA-256) → its **framework citation**.
-`aire verify` is the thing that makes it defensible: it proves no one edited
-the evidence after the fact.
+`aire verify` is what makes it defensible, with one step that matters: **hand
+the printed head (`<seq>:<hash>`) to the app owners now** (it is also in the
+report). The chain alone proves internal consistency; with the head held by
+someone else, `aire verify --expect-head <head>` later proves nobody rewrote
+the evidence up to that point, including someone with access to the file.
 
 ## What to capture back (the pilot's real output)
 
