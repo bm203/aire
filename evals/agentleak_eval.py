@@ -201,7 +201,7 @@ class VaultResult:
             "note": (
                 "Honestly scoped: PII-detection RECALL over AgentLeak private-vault "
                 "records that carry an explicit identity field (ground truth is "
-                "field-name based). Not precision — the remaining records are not "
+                "field-name based). Not precision: the remaining records are not "
                 "reliable PII-free negatives (records are about people; names appear "
                 "in free-text fields too), so records flagged without an identity "
                 "field are reported separately as PII-in-free-text, not as errors."

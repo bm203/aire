@@ -91,5 +91,6 @@ class LatencySamples:
             "mean_ms": round(statistics.fmean(self.samples_ms), 4),
             "median_ms": round(statistics.median(self.samples_ms), 4),
             "p95_ms": round(self._pct(0.95), 4),
+            "p99_ms": round(self._pct(0.99), 4),
             "max_ms": round(max(self.samples_ms), 4),
         }

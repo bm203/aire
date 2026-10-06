@@ -180,11 +180,28 @@ class TestOverhead:
         assert r["report_build_ms"] >= 0
 
 
+class TestConcurrency:
+    def test_concurrent_writers_smoke(self):
+        from evals import concurrency
+
+        out = concurrency.measure_concurrent_writers(writers=(2,), events_per_writer=20)
+        w = out["2"]
+        assert w["events_attempted"] == 40 and w["chain_ok"]
+        assert w["append_latency"]["count"] == 40 and "p99_ms" in w["append_latency"]
+
+    def test_call_overhead_records_two_events_per_call(self):
+        from evals import concurrency
+
+        out = concurrency.measure_call_overhead(n=20)
+        assert out["events_recorded"] == 40
+        assert out["instrumented_call"]["count"] == 20
+
+
 class TestRunOrchestrator:
     def test_collect_and_markdown_are_pii_free(self, tmp_path):
         from evals import run
 
-        results = run.collect(data_dir=None)  # fixture path for AgentLeak
+        results = run.collect(data_dir=None, concurrency=False)  # fixture path for AgentLeak
         md = run.to_markdown(results)
         assert "AgentDojo" in md and "AgentLeak" in md and "Overhead" in md
         for pii in ["111-22-3333", "jordan.miller@example.com", "Taylor Brooks"]:
