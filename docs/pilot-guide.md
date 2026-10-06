@@ -126,6 +126,18 @@ report). The chain alone proves internal consistency; with the head held by
 someone else, `aire verify --expect-head <head>` later proves nobody rewrote
 the evidence up to that point, including someone with access to the file.
 
+For a pilot that runs longer than a day, automate this with checkpoints sent
+to a system the app team does not control (their SIEM, or a share owned by
+security or audit), on a schedule:
+
+```bash
+pip install "aire[signing]"
+aire keygen /secure/aire-signer            # keep the private key away from the app's user
+aire checkpoint evidence.db --sign /secure/aire-signer --sink syslog:siem.internal
+# later, by the auditor, with the witness's copy of the checkpoints:
+aire verify evidence.db --checkpoints checkpoints.log --pubkey aire-signer.pub --max-gap 1000
+```
+
 ## What to capture back (the pilot's real output)
 
 The point of the pilot is *feedback*, so record it as you go:

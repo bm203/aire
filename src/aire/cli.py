@@ -363,6 +363,24 @@ def verify(
             "fails if history up to that point was rewritten or removed",
         ),
     ] = None,
+    checkpoints: Annotated[
+        Path | None,
+        typer.Option(
+            "--checkpoints",
+            help="Checkpoint file (from `aire checkpoint`, or a witness's copy); checks every "
+            "checkpoint's store, signature, and head",
+        ),
+    ] = None,
+    pubkey: Annotated[
+        list[Path] | None,
+        typer.Option("--pubkey", help="Public key(s) whose signatures are required (repeatable)"),
+    ] = None,
+    max_gap: Annotated[
+        int | None,
+        typer.Option(
+            "--max-gap", help="Fail if more than N events follow the latest checkpoint"
+        ),
+    ] = None,
 ) -> None:
     """Verify the integrity of an evidence store's hash chain.
 
@@ -387,6 +405,15 @@ def verify(
         except ValueError as exc:
             typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=2) from exc
+
+    if checkpoints is not None:
+        _verify_checkpoints(db, checkpoints, pubkey or [], max_gap)
+        return
+    if pubkey or max_gap is not None:
+        typer.secho(
+            "error: --pubkey and --max-gap need --checkpoints", fg=typer.colors.RED, err=True
+        )
+        raise typer.Exit(code=2)
 
     store = EvidenceStore(db, read_only=True)
     try:
@@ -413,6 +440,132 @@ def verify(
         err=True,
     )
     raise typer.Exit(code=1)
+
+
+def _verify_checkpoints(db: Path, path: Path, pubkeys: list[Path], max_gap: int | None) -> None:
+    from aire.store import EvidenceStore
+    from aire.store.checkpoints import (
+        CheckpointError,
+        load_public_key,
+        read_checkpoints,
+        verify_checkpoints,
+    )
+
+    try:
+        records = read_checkpoints(path)
+        keys = [load_public_key(k) for k in pubkeys]
+    except (CheckpointError, OSError, ValueError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+
+    store = EvidenceStore(db, read_only=True)
+    try:
+        report = verify_checkpoints(store, records, public_keys=keys, max_gap=max_gap)
+    finally:
+        store.close()
+
+    if not report.ok:
+        typer.secho(
+            "TAMPER OR GAP DETECTED against checkpoints:\n"
+            + "\n".join(f"- {p}" for p in report.problems),
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    typer.secho(
+        f"OK: chain intact and consistent with {report.checkpoints} checkpoint(s) "
+        f"({report.signed_verified} signature(s) verified)",
+        fg=typer.colors.GREEN,
+    )
+    typer.echo(f"head: {report.chain.head}; events after the latest checkpoint "
+               f"(not yet protected): {report.unprotected_tail}")
+    if report.signatures_unchecked:
+        typer.echo(
+            f"note: {report.signatures_unchecked} signature(s) not checked; pass --pubkey "
+            "to require them"
+        )
+
+
+@app.command()
+def keygen(
+    out: Annotated[Path, typer.Argument(help="Private key path; the public key goes to OUT.pub")],
+) -> None:
+    """Create an Ed25519 key pair for signing checkpoints.
+
+    Keep the private key where the evidence store's writer cannot read it
+    (another OS user, a signer host, or import it into an HSM/KMS): a key the
+    writer can read lets the writer forge checkpoints. Requires the `signing`
+    extra.
+    """
+    from aire.store.checkpoints import CheckpointError, generate_keypair
+
+    try:
+        private, public = generate_keypair(out)
+    except CheckpointError as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"wrote {private} (private, 0600) and {public}")
+
+
+@app.command()
+def checkpoint(
+    db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],
+    sign: Annotated[
+        Path | None, typer.Option("--sign", help="Ed25519 private key (from `aire keygen`)")
+    ] = None,
+    sink: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--sink",
+            help="Where to send the checkpoint (repeatable): - (stdout, default), "
+            "file:PATH, syslog:HOST[:PORT]",
+        ),
+    ] = None,
+) -> None:
+    """Record the current chain head as a checkpoint, signed and/or witnessed.
+
+    Verifies the chain first and refuses to checkpoint a broken one. Send
+    checkpoints somewhere the store's writer cannot change (a SIEM via syslog,
+    an audit-owned share) and run this on a schedule; later,
+    `aire verify DB --checkpoints FILE [--pubkey KEY.pub] [--max-gap N]` proves
+    the evidence was not rewritten up to the latest checkpoint.
+    """
+    from aire.store import EvidenceStore
+    from aire.store.checkpoints import (
+        BrokenChainError,
+        CheckpointError,
+        emit,
+        load_private_key,
+        make_checkpoint,
+    )
+
+    if not db.exists():
+        typer.secho(f"error: no such file: {db}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+    try:
+        key = load_private_key(sign) if sign is not None else None
+        store = EvidenceStore(db, read_only=True)
+        if store.store_id() is None:
+            # A store created before store ids: assign one (the only write made).
+            store.close()
+            EvidenceStore(db).close()
+            store = EvidenceStore(db, read_only=True)
+        try:
+            record = make_checkpoint(store, private_key=key)
+        finally:
+            store.close()
+        for target in sink or ["-"]:
+            emit(record, target)
+    except BrokenChainError as exc:
+        typer.secho(f"TAMPER DETECTED: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+    except (CheckpointError, OSError, ValueError) as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    if sink and "-" not in sink:
+        st = record["statement"]
+        signed = "signed" if "sig" in record else "unsigned"
+        typer.echo(f"checkpoint seq {st['seq']} ({signed}) sent to {', '.join(sink)}")
 
 
 @app.command()

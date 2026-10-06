@@ -15,8 +15,11 @@ constraint at every level, not a feature.
   edits, insertions, deletions, and reordering that leave the chain
   inconsistent. The chain uses no secret: someone with write access to the
   store can rewrite events and recompute every later hash. That rewrite is
-  detected only against a chain head recorded outside their reach
-  (`aire verify --expect-head <seq>:<hash>`; every report carries the head).
+  detected only against a chain head recorded outside their reach: a head
+  passed to `aire verify --expect-head <seq>:<hash>` (every report carries it),
+  or checkpoints from `aire checkpoint`, Ed25519-signed with a key the writer
+  cannot read and/or sent to a witness the writer does not control, checked
+  with `aire verify --checkpoints FILE --pubkey KEY.pub --max-gap N`.
 - **Evidence is treated as sensitive data.** The store contains prompts,
   model outputs, memory contents, and possibly personal data. Database files
   (including WAL/SHM sidecars) are created with owner-only permissions
@@ -50,8 +53,12 @@ constraint at every level, not a feature.
 | Threat | Mitigation |
 |---|---|
 | Accidental or naive edits to evidence | Append-only triggers stop mutation through the normal write path; `aire verify` localizes any edit that breaks the chain |
-| Deliberate rewrite by someone with write access (edit + recompute the chain) | **Not detected by the chain alone.** Detected up to a recorded head with `aire verify --expect-head`; record heads outside the host (ticket, email, git, write-once storage). Signed heads are roadmap |
-| Removal of events after the last recorded head | Not detected until a later head is recorded; anchor frequently |
+| Deliberate rewrite by someone with write access (edit + recompute the chain) | **Not detected by the chain alone.** Detected up to the latest checkpoint: signed checkpoints (key held where the writer cannot read it) and/or checkpoints delivered to a witness the writer does not control; or a head recorded by hand and passed to `--expect-head` |
+| Forging or editing checkpoints | Ed25519 signatures over a canonical statement; `--pubkey` requires a valid signature from a known key on every checkpoint |
+| Replaying a checkpoint from another store | Each store has an immutable id; every checkpoint names it |
+| Deleting recent checkpoints to rewrite what they covered | `--max-gap N` fails when more than N events follow the latest checkpoint; a witness keeps its own copy |
+| Signing key readable by the writer | Not mitigated: such a key lets the writer forge checkpoints. Keep it on another user, host, or in an HSM/KMS; prefer a witness the writer does not control |
+| Removal of events after the last checkpoint | Not detected until the next checkpoint; the checkpoint interval is the exposure window |
 | Compromised host at recording time (fabricated or suppressed events) | Out of scope: evidence is only as trustworthy as the host that recorded it. Imported coding-agent logs carry the same limit for the log's source |
 | Adversarial content in prompts/tool results (injection, DoS payloads) | Bounded scans, ReDoS-safe patterns, detection out-of-band of the request path |
 | AIRE breaking or degrading the monitored app | Fail-open sensor, no inline transformation, host errors propagate untouched |
@@ -62,9 +69,8 @@ constraint at every level, not a feature.
 | Malicious or vulnerable dependency | Hash-pinned lockfile, `pip-audit` in CI, 14-day adoption cooldown |
 
 Out of scope in v1 (roadmap): at-rest encryption of the evidence store,
-remote/append-to-remote evidence sinks, key-managed signing of chain heads
-and external anchoring (timestamp authority, transparency log), multi-user
-access control.
+remote/append-to-remote evidence sinks, HSM/KMS-held checkpoint keys,
+trusted timestamps for checkpoints (RFC 3161), multi-user access control.
 
 ## Reporting a vulnerability
 

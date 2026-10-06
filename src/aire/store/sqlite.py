@@ -17,7 +17,8 @@ import json
 import re
 import sqlite3
 import threading
-from collections.abc import Iterator
+import uuid
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,14 @@ CREATE TRIGGER IF NOT EXISTS events_no_update BEFORE UPDATE ON events
 BEGIN SELECT RAISE(ABORT, 'evidence log is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events
 BEGIN SELECT RAISE(ABORT, 'evidence log is append-only'); END;
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS meta_no_update BEFORE UPDATE ON meta
+BEGIN SELECT RAISE(ABORT, 'store metadata is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS meta_no_delete BEFORE DELETE ON meta
+BEGIN SELECT RAISE(ABORT, 'store metadata is immutable'); END;
 """
 
 _COLUMNS = "event_id, ts, session_id, trace_id, app, event_type, payload, prev_hash, hash"
@@ -89,6 +98,13 @@ class EvidenceStore:
             self._conn = sqlite3.connect(self.path, check_same_thread=False)
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.executescript(_SCHEMA)
+            # A store's identity is fixed at creation (or the first read-write
+            # open of a store that predates it). Checkpoints name it, so a
+            # checkpoint for one store cannot be replayed against another.
+            self._conn.execute(
+                "INSERT OR IGNORE INTO meta (key, value) VALUES ('store_id', ?)",
+                (str(uuid.uuid4()),),
+            )
             self._conn.commit()
             self._restrict_permissions()
 
@@ -184,11 +200,21 @@ class EvidenceStore:
         ).fetchone()
         return self._row_to_event(row) if row else None
 
+    def store_id(self) -> str | None:
+        """The store's fixed identity, or None for a store that predates it."""
+        try:
+            row = self._conn.execute("SELECT value FROM meta WHERE key = 'store_id'").fetchone()
+        except sqlite3.OperationalError:  # read-only open of a store without a meta table
+            return None
+        return row[0] if row else None
+
     def head_hash(self) -> str:
         row = self._conn.execute("SELECT hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
         return row[0] if row else GENESIS_HASH
 
-    def verify(self, expect_head: str | None = None) -> VerificationResult:
+    def verify(
+        self, expect_head: str | None = None, *, anchors: Iterable[str] = ()
+    ) -> VerificationResult:
         """Walk the full chain; report the first broken link, if any.
 
         Without ``expect_head`` this proves the chain is internally consistent:
@@ -199,12 +225,20 @@ class EvidenceStore:
         verification and stored outside the writer's reach. Any rewrite,
         removal, or reordering at or before that point then fails, while events
         appended afterwards still verify normally.
+
+        ``anchors`` checks several recorded heads in the same single walk (used
+        for checkpoint files).
         """
-        anchor = parse_anchor(expect_head) if expect_head is not None else None
+        expected: dict[int, str] = {}
+        for raw in [*anchors, *([expect_head] if expect_head is not None else [])]:
+            seq, hash_ = parse_anchor(raw)
+            if expected.get(seq, hash_) != hash_:
+                raise ValueError(f"conflicting anchors for seq {seq}")
+            expected[seq] = hash_
         expected_prev = GENESIS_HASH
         checked = 0
         head: str | None = None
-        anchor_seen = False
+        seen: set[int] = set()
         for seq, *row in self._conn.execute(
             f"SELECT seq, {_COLUMNS} FROM events ORDER BY seq"
         ):
@@ -228,8 +262,8 @@ class EvidenceStore:
                     first_bad_event_id=event.event_id,
                     reason="content tamper: stored hash does not match recomputed hash",
                 )
-            if anchor is not None and seq == anchor[0]:
-                if event.hash != anchor[1]:
+            if seq in expected:
+                if event.hash != expected[seq]:
                     return VerificationResult(
                         ok=False,
                         checked=checked,
@@ -240,22 +274,23 @@ class EvidenceStore:
                             "from the recorded hash (history up to this point was rewritten)"
                         ),
                     )
-                anchor_seen = True
+                seen.add(seq)
             expected_prev = event.hash
             head = f"{seq}:{event.hash}"
             checked += 1
-        if anchor is not None and not anchor_seen:
+        missing = sorted(set(expected) - seen)
+        if missing:
             return VerificationResult(
                 ok=False,
                 checked=checked,
-                first_bad_seq=anchor[0],
+                first_bad_seq=missing[0],
                 reason=(
                     "anchor not found: no event exists at the recorded head "
                     "(events were removed or renumbered)"
                 ),
             )
         return VerificationResult(
-            ok=True, checked=checked, head=head, anchor_checked=anchor is not None
+            ok=True, checked=checked, head=head, anchor_checked=bool(expected)
         )
 
     @staticmethod

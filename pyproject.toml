@@ -40,6 +40,8 @@ openai = ["openai>=1.50"]
 # LangGraph app; only the checkpoint packages are needed, not full langgraph.
 langgraph = ["langgraph-checkpoint-sqlite>=2.0"]
 pii = ["presidio-analyzer>=2.2"]
+# Ed25519 signing of chain checkpoints (aire keygen / checkpoint / verify --pubkey).
+signing = ["cryptography>=42"]
 # Local, read-only audit dashboard (aire dashboard). jinja2 is already core.
 dashboard = ["fastapi>=0.110", "uvicorn>=0.29"]
 examples = [

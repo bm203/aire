@@ -77,8 +77,16 @@ too**, so the audit conclusions are themselves in the tamper-evident chain.
    outside the writer's reach (every report carries it), it is passed back as
    `verify(expect_head=...)` / `aire verify --expect-head`. A rewrite, removal,
    or renumbering at or before the anchored event then fails, while events
-   appended afterwards verify normally. Key-managed signing of heads is the
-   roadmap step that removes the need to store heads by hand.
+   appended afterwards verify normally.
+4. **Checkpoints** (`aire.store.checkpoints`): a canonical statement
+   `{v, store_id, seq, head, ts}` about the head, optionally Ed25519-signed,
+   emitted to sinks (stdout, file, syslog). Each store has an immutable
+   `store_id` in a trigger-protected `meta` table, so checkpoints cannot be
+   replayed across stores. `verify_checkpoints` checks store, signature, and
+   every checkpointed head in one chain walk, and reports how many events
+   follow the latest checkpoint (the only unprotected part: a checkpoint at
+   seq N covers everything up to N). A checkpoint is only as independent as its
+   key custody or its witness: the code cannot enforce where the key lives.
 
 ## Fail-open sensor
 

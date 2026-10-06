@@ -29,8 +29,9 @@ pip-compile --all-extras --generate-hashes --strip-extras --allow-unsafe \
   --output-file=requirements.lock pyproject.toml
 ```
 
-- `--all-extras`: locks every optional group (anthropic, langgraph, pii,
-  examples, eval, dev) so a single lock covers the full CI/dev surface.
+- `--all-extras`: locks every optional group (anthropic, openai, langgraph,
+  pii, signing, dashboard, examples, eval, dev) so a single lock covers the
+  full CI/dev surface.
 - `--generate-hashes`: records a SHA-256 for every artifact, so installs are
   verified against tampering (`pip --require-hashes` refuses anything whose
   hash doesn't match).

@@ -49,7 +49,11 @@ What makes it defensible under scrutiny:
   chain head. The chain uses no secret, so someone with write access could
   rebuild a consistent chain. Recording the head outside the machine (every
   report carries it) and passing it to `aire verify --expect-head` detects any
-  such rewrite up to that point. Signed heads are on the roadmap.
+  such rewrite up to that point. `aire checkpoint` automates this: it records
+  the head as an Ed25519-signed and/or witnessed checkpoint (for example via
+  syslog into a SIEM the operator does not control), and
+  `aire verify --checkpoints` checks every signature and every checkpointed
+  head, and can fail when too many events follow the latest checkpoint.
 - **Policies are data, in a real language**: an auditor-friendly YAML
   surface compiled to [CEL](https://cel.dev/) (a sandboxed, industry-standard
   expression language), never a homegrown DSL.
@@ -270,7 +274,7 @@ that check an application's claims against the actual system state.
 
 ## Roadmap (out of v1)
 
-Signed chain heads and external anchoring, enforcement mode
+HSM/KMS-held signing keys and RFC 3161 timestamps for checkpoints, enforcement mode
 (blocking/redaction), governance dashboards, additional collectors (LiteLLM,
 Google Gemini), OTLP export, PostgreSQL storage, more deep controls, and SIEM
 integration.

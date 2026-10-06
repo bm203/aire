@@ -30,7 +30,7 @@ lockfile CI installs from. If you change a dependency, **regenerate the lock**
 in the same PR and respect the 14-day adoption cooldown:
 
 ```bash
-pip-compile --all-extras --generate-hashes --strip-extras \
+pip-compile --all-extras --generate-hashes --strip-extras --allow-unsafe \
   --output-file=requirements.lock pyproject.toml
 ```
 
@@ -48,8 +48,11 @@ extras so a deployment only installs what it uses:
 | Extra | Enables |
 |---|---|
 | `anthropic` | The Anthropic SDK collector |
+| `openai` | The OpenAI / Azure OpenAI SDK collector |
 | `langgraph` | The LangGraph checkpointer collector + the deep memory control |
 | `pii` | The Presidio-backed PII detector (needs a spaCy model) |
+| `signing` | Ed25519-signed checkpoints (`aire keygen`, `aire checkpoint --sign`) |
+| `dashboard` | The local read-only audit dashboard |
 | `examples` | The instrumented FastAPI example app |
 | `eval` | The AgentDojo/AgentLeak evaluation harness |
 | `dev` | pytest + ruff |
