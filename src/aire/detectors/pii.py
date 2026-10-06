@@ -102,6 +102,7 @@ class PresidioScanner:
 
 class PIIDetector(Detector):
     id = "pii.content"
+    framework_refs = tuple(_FRAMEWORK_REFS)
 
     def __init__(self, scanner: PIIScanner | None = None) -> None:
         self.scanner = scanner or PresidioScanner()

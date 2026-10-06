@@ -17,6 +17,12 @@ detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
 
+Reports also show **per-control coverage**: for each control a configured check
+covers, whether the evidence shows it *passed* (evaluated, no violation),
+*failed*, *not evaluated* (the check could not run), or has *no evidence*
+(nothing applicable was recorded). Absence of a finding is never reported as a
+pass on its own.
+
 > **Status:** v1 feature-complete and tested (221 tests). Apache-2.0.
 > Not yet published to a package index.
 

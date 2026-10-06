@@ -212,3 +212,83 @@ class TestReportCli:
         assert result.exit_code == 0
         assert "EU AI Act" in result.output
         assert "Record-keeping" in result.output
+
+
+class TestControlCoverage:
+    """Per-control status: passed / failed / not evaluated / no evidence."""
+
+    @staticmethod
+    def policy(pid, violation, refs, applies_to=(EventType.TOOL_CALL,)):
+        from aire.core.types import Severity
+        from aire.policy.models import Policy
+
+        return Policy(id=pid, description=pid, severity=Severity.HIGH,
+                      applies_to=list(applies_to), violation=violation, framework_refs=refs)
+
+    @staticmethod
+    def calls(store, *tools):
+        for t in tools:
+            store.append(session_id="s", app="a", event_type=EventType.TOOL_CALL,
+                         payload={"gen_ai.tool.name": t})
+
+    @staticmethod
+    def coverage(store):
+        return {c.ref: c for c in build_report(store).control_coverage}
+
+    def test_failed_passed_and_no_evidence(self, store):
+        self.calls(store, "search", "delete_all")
+        PolicyEngine([
+            self.policy("TOOL_BAN", 'payload["gen_ai.tool.name"] == "delete_all"',
+                        ["OWASP-LLM:LLM06"]),
+            self.policy("TOOL_OK", 'payload["gen_ai.tool.name"] == "never"',
+                        ["EU-AI-ACT:Art.14"]),
+            self.policy("MEMORY_RULE", "true", ["EU-AI-ACT:Art.10"],
+                        applies_to=(EventType.MEMORY_WRITE,)),
+        ]).run(store)
+        cov = self.coverage(store)
+        assert cov["OWASP-LLM:LLM06"].status == "failed" and cov["OWASP-LLM:LLM06"].failures == 1
+        assert cov["EU-AI-ACT:Art.14"].status == "passed"
+        assert cov["EU-AI-ACT:Art.14"].events_evaluated == 2
+        assert cov["EU-AI-ACT:Art.10"].status == "no evidence"  # no memory writes recorded
+
+    def test_evaluation_errors_are_not_a_pass(self, store):
+        self.calls(store, "search")
+        PolicyEngine([self.policy("NEEDS_FIELD", 'payload["missing_field"] == "x"',
+                                  ["NIST-AI-RMF:MANAGE-3.1"])]).run(store)
+        cov = self.coverage(store)["NIST-AI-RMF:MANAGE-3.1"]
+        assert cov.status == "not evaluated" and cov.evaluation_errors >= 1
+
+    def test_clean_detector_run_passes_its_controls(self, store):
+        self.calls(store, "search")
+        DetectorRunner([PromptInjectionDetector()]).run(store)
+        cov = self.coverage(store)
+        for ref in PromptInjectionDetector.framework_refs:
+            assert cov[ref].status == "passed" and "prompt_injection.heuristic" in cov[ref].checks
+
+    def test_crashed_detector_is_not_evaluated(self, store):
+        from aire.detectors.base import Detector
+
+        class Broken(Detector):
+            id = "broken.detector"
+            framework_refs = ("EU-AI-ACT:Art.15",)
+
+            def inspect(self, events, store):
+                raise RuntimeError("boom")
+
+        self.calls(store, "search")
+        DetectorRunner([Broken()]).run(store)
+        assert self.coverage(store)["EU-AI-ACT:Art.15"].status == "not evaluated"
+
+    def test_session_reports_skip_coverage_and_keep_existing_content(self, store):
+        populate(store)  # builtin policies + detectors, as before
+        assert build_report(store, session_id="sess-1").control_coverage == []
+        assert build_report(store).sessions  # existing report content unchanged
+
+    def test_rendered_with_caveat(self, store):
+        self.calls(store, "search")
+        DetectorRunner([PromptInjectionDetector()]).run(store)
+        report = build_report(store)
+        for text in (to_markdown(report), to_html(report)):
+            assert "Control coverage" in text
+            assert "not a statement that the control is satisfied" in text
+        assert json.loads(to_json(report))["control_coverage"]

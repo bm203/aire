@@ -17,7 +17,14 @@ import aire
 from aire.core.events import AuditEvent, EventType
 from aire.core.types import Severity
 from aire.mappings import FrameworkMappings
-from aire.report.models import AuditReport, ChainStatus, ReportFinding, SessionReport
+from aire.report.models import (
+    AuditReport,
+    ChainStatus,
+    ControlCoverage,
+    CoverageStatus,
+    ReportFinding,
+    SessionReport,
+)
 from aire.risk import score_to_level, weight_for
 from aire.store import EvidenceStore
 
@@ -127,7 +134,89 @@ def build_report(
         severity_totals=dict(severity_totals),
         sessions=sessions,
         recommendations=recommendations,
+        control_coverage=(
+            _control_coverage(all_events, findings, mappings) if session_id is None else []
+        ),
     )
+
+
+def _control_coverage(
+    events: list[AuditEvent], findings: list[ReportFinding], mappings: FrameworkMappings
+) -> list[ControlCoverage]:
+    """Per-control status from run summaries plus recorded findings.
+
+    A control appears when a configured check covers it (its policy or detector
+    declares the ref) or a finding cites it. Counts come from the most complete
+    run of each check, since re-runs re-evaluate the same events. Absence of a
+    failure is reported as PASSED only when the check evaluated at least one
+    event without errors; otherwise NOT EVALUATED or NO EVIDENCE.
+    """
+    evaluated: dict[str, int] = defaultdict(int)  # check id -> events evaluated
+    errored: dict[str, int] = defaultdict(int)  # check id -> evaluation errors
+    refs_of: dict[str, set[str]] = defaultdict(set)  # check id -> framework refs
+    for e in events:
+        op = e.payload.get("op")
+        if op == "run_summary":
+            for pid, c in (e.payload.get("per_policy") or {}).items():
+                refs_of[pid].update(c.get("framework_refs", []))
+                evaluated[pid] = max(evaluated[pid], int(c.get("applicable", 0)))
+                errored[pid] = max(errored[pid], int(c.get("error", 0)))
+        elif op == "detector_run_summary":
+            scanned = int(e.payload.get("events_scanned", 0))
+            for did, c in (e.payload.get("per_detector") or {}).items():
+                refs_of[did].update(c.get("framework_refs", []))
+                if c.get("ran", True):
+                    evaluated[did] = max(evaluated[did], scanned)
+                else:
+                    errored[did] = max(errored[did], 1)
+
+    failures: dict[str, int] = defaultdict(int)
+    error_findings: dict[str, int] = defaultdict(int)
+    finding_checks: dict[str, set[str]] = defaultdict(set)
+    for f in findings:
+        refs = [c.ref for c in f.citations] + list(f.unresolved_refs)
+        is_error = f.verdict == "error" or "error_type" in f.detail
+        for ref in refs:
+            finding_checks[ref].add(f.origin)
+            if is_error:
+                error_findings[ref] += 1
+            else:
+                failures[ref] += 1
+
+    controls: dict[str, set[str]] = defaultdict(set)
+    for check, refs in refs_of.items():
+        for ref in refs:
+            controls[ref].add(check)
+    for ref, checks in finding_checks.items():
+        controls[ref].update(checks)
+
+    rows = []
+    for ref, checks in controls.items():
+        n_eval = sum(evaluated[c] for c in checks)
+        n_err = sum(errored[c] for c in checks) + error_findings[ref]
+        n_fail = failures[ref]
+        if n_fail:
+            status = CoverageStatus.FAILED
+        elif n_err:
+            status = CoverageStatus.NOT_EVALUATED
+        elif n_eval:
+            status = CoverageStatus.PASSED
+        else:
+            status = CoverageStatus.NO_EVIDENCE
+        resolved, _ = mappings.resolve([ref])
+        framework, _, control_id = ref.partition(":")
+        rows.append(ControlCoverage(
+            ref=ref,
+            framework=resolved[0].framework if resolved else framework,
+            control_id=resolved[0].control_id if resolved else control_id,
+            title=resolved[0].title if resolved else "(unresolved reference)",
+            status=status,
+            checks=sorted(checks),
+            events_evaluated=n_eval,
+            failures=n_fail,
+            evaluation_errors=n_err,
+        ))
+    return sorted(rows, key=lambda r: (r.framework, r.control_id))
 
 
 def _from_finding(event: AuditEvent, mappings: FrameworkMappings) -> ReportFinding:

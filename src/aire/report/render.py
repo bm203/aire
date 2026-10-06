@@ -78,6 +78,23 @@ def to_markdown(report: AuditReport) -> str:
                 f"{_md(f.summary)} | {evidence} | {_md(cites)} |"
             )
         lines.append("")
+    if report.control_coverage:
+        lines += [
+            "## Control coverage",
+            "",
+            "*Passed means the configured checks evaluated recorded events and found no "
+            "violation. It is not a statement that the control is satisfied.*",
+            "",
+            "| Control | Title | Status | Events evaluated | Failures | Errors | Checks |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for c in report.control_coverage:
+            lines.append(
+                f"| {_md(c.framework)} {_md(c.control_id)} | {_md(c.title)} | "
+                f"**{c.status.value}** | {c.events_evaluated} | {c.failures} | "
+                f"{c.evaluation_errors} | {_md(', '.join(c.checks))} |"
+            )
+        lines.append("")
     if report.recommendations:
         lines += ["## Recommendations", ""]
         lines += [f"- {_md(r)}" for r in report.recommendations]

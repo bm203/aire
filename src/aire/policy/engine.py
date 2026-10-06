@@ -84,15 +84,21 @@ class PolicyEngine:
 
         counts: Counter[str] = Counter()
         recorded: list[AuditEvent] = []
+        # Per-policy counts let a report show which controls were actually
+        # evaluated (and passed) instead of only the ones that failed.
+        per_policy: dict[str, Counter[str]] = {p.id: Counter() for p, _ in self._compiled}
         for event in events:
             for policy, expression in self._compiled:
                 if event.event_type not in policy.applies_to:
                     continue
+                per_policy[policy.id]["applicable"] += 1
                 if (policy.id, event.event_id) in already:
                     counts["already_recorded"] += 1
+                    per_policy[policy.id]["already_recorded"] += 1
                     continue
                 result = self._evaluate_one(policy, expression, event)
                 counts[result.verdict.value] += 1
+                per_policy[policy.id][result.verdict.value] += 1
                 if result.verdict is not Verdict.PASS:
                     recorded.append(
                         store.append(
@@ -113,6 +119,10 @@ class PolicyEngine:
                 "policies": [p.id for p, _ in self._compiled],
                 "backend": self.backend.name,
                 "counts": dict(counts),
+                "per_policy": {
+                    p.id: {**per_policy[p.id], "framework_refs": list(p.framework_refs)}
+                    for p, _ in self._compiled
+                },
             },
         )
         return RunOutcome(

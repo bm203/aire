@@ -27,6 +27,10 @@
   .sev-medium { background: #f5a623; color: #1a1f24; }
   .sev-low { background: #cfe3f7; color: #1a1f24; }
   .sev-info, .sev-none { background: #e8eaed; color: #1a1f24; }
+  .cov-passed { background: #1e7e34; color: #fff; }
+  .cov-failed { background: #d93025; color: #fff; }
+  .cov-not-evaluated { background: #f5a623; color: #1a1f24; }
+  .cov-no-evidence { background: #e8eaed; color: #1a1f24; }
   .risk { font-size: 1.05em; }
   footer { margin-top: 3rem; color: #5a656e; font-size: .85em;
            border-top: 1px solid #d5dbe0; padding-top: .8rem; }
@@ -97,6 +101,27 @@
 {% else %}
 <p>No findings recorded. Run <code>aire evaluate</code> and <code>aire detect</code> before reporting.</p>
 {% endfor %}
+
+{% if report.control_coverage %}
+<h2>Control coverage</h2>
+<p class="meta">Passed means the configured checks evaluated recorded events and found
+  no violation. It is not a statement that the control is satisfied.</p>
+<table>
+  <tr><th>Control</th><th>Title</th><th>Status</th><th>Events evaluated</th>
+      <th>Failures</th><th>Errors</th><th>Checks</th></tr>
+  {% for c in report.control_coverage %}
+  <tr>
+    <td>{{ c.framework }} {{ c.control_id }}</td>
+    <td>{{ c.title }}</td>
+    <td><span class="sev cov-{{ c.status.value | replace(" ", "-") }}">{{ c.status.value }}</span></td>
+    <td>{{ c.events_evaluated }}</td>
+    <td>{{ c.failures }}</td>
+    <td>{{ c.evaluation_errors }}</td>
+    <td>{{ c.checks | join(", ") }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
 
 {% if report.recommendations %}
 <h2>Recommendations</h2>

@@ -23,6 +23,7 @@ _FRAMEWORK_REFS = ["EU-AI-ACT:Art.12", "ISO42001:A.6.2.8"]
 
 class CompletenessDetector(Detector):
     id = "audit_log.completeness"
+    framework_refs = tuple(_FRAMEWORK_REFS)
 
     def inspect(self, events: list[AuditEvent], store: EvidenceStore) -> list[Finding]:
         findings: list[Finding] = []

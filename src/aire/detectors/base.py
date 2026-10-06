@@ -71,6 +71,11 @@ class Finding(BaseModel):
 
 class Detector(ABC):
     id: str
+    # Every framework ref this detector's findings can cite. Lets a report say a
+    # control was checked and passed (the detector ran, found nothing) rather
+    # than "no evidence". Detectors that leave it empty are only visible in
+    # coverage through the findings they produce.
+    framework_refs: tuple[str, ...] = ()
 
     @abstractmethod
     def inspect(self, events: list[AuditEvent], store: EvidenceStore) -> list[Finding]:
@@ -100,10 +105,18 @@ class DetectorRunner:
 
         counts: Counter[str] = Counter()
         recorded: list[AuditEvent] = []
+        per_detector: dict[str, dict] = {}
         for detector in self.detectors:
+            stats = per_detector[detector.id] = {
+                "ran": True,
+                "findings": 0,
+                "framework_refs": list(detector.framework_refs),
+            }
             try:
                 findings = detector.inspect(events, store)
+                stats["findings"] = len(findings)
             except Exception as exc:  # crash-safe: the failure IS a finding
+                stats["ran"] = False
                 counts["detector_errors"] += 1
                 findings = [
                     Finding(
@@ -142,6 +155,7 @@ class DetectorRunner:
                 "events_scanned": len(events),
                 "detectors": [d.id for d in self.detectors],
                 "counts": dict(counts),
+                "per_detector": per_detector,
             },
         )
         return DetectionOutcome(

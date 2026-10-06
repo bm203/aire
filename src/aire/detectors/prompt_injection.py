@@ -91,6 +91,7 @@ _PATTERNS: list[tuple[str, re.Pattern[str], float]] = [
 
 class PromptInjectionDetector(Detector):
     id = "prompt_injection.heuristic"
+    framework_refs = tuple(_FRAMEWORK_REFS)
 
     def __init__(self, threshold: float = 0.8) -> None:
         self.threshold = threshold

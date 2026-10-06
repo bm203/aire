@@ -27,6 +27,10 @@
   .sev-medium { background: #f5a623; color: #1a1f24; }
   .sev-low { background: #cfe3f7; color: #1a1f24; }
   .sev-info, .sev-none { background: #e8eaed; color: #1a1f24; }
+  .cov-passed { background: #1e7e34; color: #fff; }
+  .cov-failed { background: #d93025; color: #fff; }
+  .cov-not-evaluated { background: #f5a623; color: #1a1f24; }
+  .cov-no-evidence { background: #e8eaed; color: #1a1f24; }
   .risk { font-size: 1.05em; }
   footer { margin-top: 3rem; color: #5a656e; font-size: .85em;
            border-top: 1px solid #d5dbe0; padding-top: .8rem; }
@@ -35,14 +39,14 @@
 <body>
 <h1>AIRE Audit Report: sample (synthetic data)</h1>
 <p class="meta">
-  Generated 2026-10-06T20:12:27+00:00 by aire 0.1.0 ·
+  Generated 2026-10-06T21:20:09+00:00 by aire 0.1.0 ·
   evidence store <code>evidence.db</code>
   
   · 16 event(s) in scope
 </p>
 
 
-<div class="banner ok">Evidence chain INTACT: 16 event(s) verified. Head <code>16:6e0aedd648de915f3bf904712178979b682699915a6d92f4ed42b4e4b1a637dd</code></div>
+<div class="banner ok">Evidence chain INTACT: 16 event(s) verified. Head <code>16:00962fd4e56cded59c1b0d28a67fb4c41a050a913451bab7eb0db747444f665d</code></div>
 
 
 <p class="risk">Overall risk:
@@ -72,8 +76,8 @@
       <td>
         
           
-            <code>01M49DH5N1TZMRHGG4Q75Q63GE</code><br>
-            <span class="meta">sha256 28ebaec0ca64a1ae…</span><br>
+            <code>01M49HD3W70EYKXHHVP9DQAPZ3</code><br>
+            <span class="meta">sha256 a42fd0415449d3c5…</span><br>
           
         
       </td>
@@ -97,8 +101,8 @@
       <td>
         
           
-            <code>01M49DH5MN5KZ7T4WW31ACMBDN</code><br>
-            <span class="meta">sha256 a92e346f18ae9b38…</span><br>
+            <code>01M49HD3VYYRDYPTKPQJMF6N5Z</code><br>
+            <span class="meta">sha256 f7d79c6089ae594a…</span><br>
           
         
       </td>
@@ -122,8 +126,8 @@
       <td>
         
           
-            <code>01M49DH5MPK5E16SXHX9QFN2VH</code><br>
-            <span class="meta">sha256 a78b759ae32b9398…</span><br>
+            <code>01M49HD3VZ5MMVDJ34WK9MWXWK</code><br>
+            <span class="meta">sha256 19bdebaf95ed00ac…</span><br>
           
         
       </td>
@@ -147,8 +151,8 @@
       <td>
         
           
-            <code>01M49DH5MZXKJCNX131VPJ60YZ</code><br>
-            <span class="meta">sha256 6ec47692c0422bff…</span><br>
+            <code>01M49HD3W6KXQG77TV1N91XJ92</code><br>
+            <span class="meta">sha256 c1b8f98e791c2151…</span><br>
           
         
       </td>
@@ -173,7 +177,7 @@
       <td>retention exceeded: thread &#39;customer-demo&#39; holds a checkpoint 89 day(s) old (policy maximum: 30 day(s))</td>
       <td>
         
-          <code>01M49DH6XX2XW63V61D4N62MAE</code>
+          <code>01M49HD5BBTSPQ254GKF6AYANJ</code>
         
       </td>
       <td>
@@ -193,7 +197,7 @@
       <td>personal data stored in memory: thread &#39;customer-demo&#39; latest checkpoint contains EMAIL_ADDRESS×1</td>
       <td>
         
-          <code>01M49DH6XYPBFD6WNQGWK89HS3</code>
+          <code>01M49HD5BCXVV2RS0Z3YE7WN17</code>
         
       </td>
       <td>
@@ -216,8 +220,8 @@
       <td>
         
           
-            <code>01M49DH5MJWEY6XRGDTVD0J0W9</code><br>
-            <span class="meta">sha256 83eb200a080050ef…</span><br>
+            <code>01M49HD3VWKTJZCK0MQ0D080JR</code><br>
+            <span class="meta">sha256 4fb5acfed25a73a2…</span><br>
           
         
       </td>
@@ -241,8 +245,8 @@
       <td>
         
           
-            <code>01M49DH5MJWEY6XRGDTVD0J0W9</code><br>
-            <span class="meta">sha256 83eb200a080050ef…</span><br>
+            <code>01M49HD3VWKTJZCK0MQ0D080JR</code><br>
+            <span class="meta">sha256 4fb5acfed25a73a2…</span><br>
           
         
       </td>
@@ -261,6 +265,187 @@
     </tr>
   
   </tbody>
+</table>
+
+
+
+<h2>Control coverage</h2>
+<p class="meta">Passed means the configured checks evaluated recorded events and found
+  no violation. It is not a statement that the control is satisfied.</p>
+<table>
+  <tr><th>Control</th><th>Title</th><th>Status</th><th>Events evaluated</th>
+      <th>Failures</th><th>Errors</th><th>Checks</th></tr>
+  
+  <tr>
+    <td>EU-AI-ACT Art.10</td>
+    <td>Data and data governance</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>12</td>
+    <td>5</td>
+    <td>0</td>
+    <td>memory.retention_deletion, pii.content</td>
+  </tr>
+  
+  <tr>
+    <td>EU-AI-ACT Art.11</td>
+    <td>Technical documentation</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td>MODEL_ALLOWLIST</td>
+  </tr>
+  
+  <tr>
+    <td>EU-AI-ACT Art.12</td>
+    <td>Record-keeping</td>
+    <td><span class="sev cov-passed">passed</span></td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>SESSION_ATTRIBUTION, audit_log.completeness</td>
+  </tr>
+  
+  <tr>
+    <td>EU-AI-ACT Art.14</td>
+    <td>Human oversight</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>2</td>
+    <td>1</td>
+    <td>0</td>
+    <td>TOOL_ALLOWLIST, TOOL_HUMAN_REVIEW</td>
+  </tr>
+  
+  <tr>
+    <td>EU-AI-ACT Art.15</td>
+    <td>Accuracy, robustness and cybersecurity</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>6</td>
+    <td>1</td>
+    <td>0</td>
+    <td>prompt_injection.heuristic</td>
+  </tr>
+  
+  <tr>
+    <td>ISO42001 A.5.4</td>
+    <td>Assessing AI system impact on individuals or groups of individuals</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>12</td>
+    <td>3</td>
+    <td>0</td>
+    <td>memory.retention_deletion, pii.content</td>
+  </tr>
+  
+  <tr>
+    <td>ISO42001 A.6.2.8</td>
+    <td>AI system recording of event logs</td>
+    <td><span class="sev cov-passed">passed</span></td>
+    <td>10</td>
+    <td>0</td>
+    <td>0</td>
+    <td>SESSION_ATTRIBUTION, audit_log.completeness</td>
+  </tr>
+  
+  <tr>
+    <td>ISO42001 A.7.5</td>
+    <td>Data provenance</td>
+    <td><span class="sev cov-passed">passed</span></td>
+    <td>4</td>
+    <td>0</td>
+    <td>0</td>
+    <td>SESSION_ATTRIBUTION</td>
+  </tr>
+  
+  <tr>
+    <td>NIST-AI-RMF GOVERN-1.6</td>
+    <td>Mechanisms are in place to inventory AI systems and are resourced according to organizational risk priorities</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td>MODEL_ALLOWLIST</td>
+  </tr>
+  
+  <tr>
+    <td>NIST-AI-RMF GOVERN-3.2</td>
+    <td>Policies and procedures are in place to define and differentiate roles and responsibilities for human-AI configurations and oversight of AI systems</td>
+    <td><span class="sev cov-passed">passed</span></td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td>TOOL_HUMAN_REVIEW</td>
+  </tr>
+  
+  <tr>
+    <td>NIST-AI-RMF MANAGE-3.1</td>
+    <td>AI risks and benefits from third-party resources are regularly monitored, and risk controls are applied and documented</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td>TOOL_ALLOWLIST</td>
+  </tr>
+  
+  <tr>
+    <td>NIST-AI-RMF MEASURE-2.10</td>
+    <td>Privacy risk of the AI system — as identified in the MAP function — is examined and documented</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>12</td>
+    <td>4</td>
+    <td>0</td>
+    <td>memory.retention_deletion, pii.content</td>
+  </tr>
+  
+  <tr>
+    <td>NIST-AI-RMF MEASURE-2.7</td>
+    <td>AI system security and resilience — as identified in the MAP function — are evaluated and documented</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>6</td>
+    <td>1</td>
+    <td>0</td>
+    <td>prompt_injection.heuristic</td>
+  </tr>
+  
+  <tr>
+    <td>OWASP-LLM LLM01</td>
+    <td>Prompt Injection</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>6</td>
+    <td>1</td>
+    <td>0</td>
+    <td>prompt_injection.heuristic</td>
+  </tr>
+  
+  <tr>
+    <td>OWASP-LLM LLM02</td>
+    <td>Sensitive Information Disclosure</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>12</td>
+    <td>4</td>
+    <td>0</td>
+    <td>memory.retention_deletion, pii.content</td>
+  </tr>
+  
+  <tr>
+    <td>OWASP-LLM LLM03</td>
+    <td>Supply Chain</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td>MODEL_ALLOWLIST</td>
+  </tr>
+  
+  <tr>
+    <td>OWASP-LLM LLM06</td>
+    <td>Excessive Agency</td>
+    <td><span class="sev cov-failed">failed</span></td>
+    <td>2</td>
+    <td>1</td>
+    <td>0</td>
+    <td>TOOL_ALLOWLIST, TOOL_HUMAN_REVIEW</td>
+  </tr>
+  
 </table>
 
 

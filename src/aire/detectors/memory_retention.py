@@ -55,6 +55,9 @@ _UNATTRIBUTED = "unattributed"
 
 class MemoryRetentionControl(Detector):
     id = "memory.retention_deletion"
+    framework_refs = tuple(
+        sorted({*_REFS_DELETION, *_REFS_RETENTION, *_REFS_PII, *_REFS_XSESSION})
+    )
 
     def __init__(
         self,

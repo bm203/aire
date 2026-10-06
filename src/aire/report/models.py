@@ -3,6 +3,7 @@ are renderings of this model — never independently assembled."""
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -55,6 +56,31 @@ class ChainStatus(BaseModel):
     head: str | None = None
 
 
+class CoverageStatus(StrEnum):
+    PASSED = "passed"  # evaluated, no failure, no evaluation error
+    FAILED = "failed"  # at least one finding or failing/warning policy result
+    NOT_EVALUATED = "not evaluated"  # checks errored; absence of failure proves nothing
+    NO_EVIDENCE = "no evidence"  # a check covers it, but nothing applicable was recorded
+
+
+class ControlCoverage(BaseModel):
+    """What the evidence says about one control. Never a compliance verdict:
+    PASSED means the configured checks evaluated recorded events and found no
+    violation, not that the control is satisfied."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ref: str
+    framework: str
+    control_id: str
+    title: str
+    status: CoverageStatus
+    checks: list[str] = Field(default_factory=list)  # policy / detector ids covering it
+    events_evaluated: int = 0
+    failures: int = 0
+    evaluation_errors: int = 0
+
+
 class AuditReport(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -70,3 +96,5 @@ class AuditReport(BaseModel):
     severity_totals: dict[str, int]
     sessions: list[SessionReport]
     recommendations: list[str]
+    # Per-control view (additive): computed for whole-store reports only.
+    control_coverage: list[ControlCoverage] = Field(default_factory=list)
