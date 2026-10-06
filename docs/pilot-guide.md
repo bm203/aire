@@ -19,10 +19,14 @@ An IT/OT security team will ask these before you touch their app. The answers
 are design properties, not promises:
 
 - **It cannot break the app.** The sensor is **observe-only and fail-open**:
-  it wraps the client and returns it unchanged; it never blocks or transforms
-  a call. Recording is a synchronous local write of about 1 ms per event
-  (measured in `evals/RESULTS.md`). If the sensor itself errors, that becomes a recorded
-  finding, never an exception in the host. (See [SECURITY.md](../SECURITY.md).)
+  it wraps the client and returns it unchanged; it never transforms a call,
+  and writes happen on a background thread, so the app's own threads never
+  wait on the evidence database. Measured: about 0.03 ms per instrumented call,
+  no host wait above 0.2 ms with eight worker processes recording flat out
+  (`evals/RESULTS.md`). If recording cannot keep up, events are dropped and
+  counted as evidence instead of slowing the app. If the sensor itself errors,
+  that becomes a recorded finding, never an exception in the host. (See
+  [SECURITY.md](../SECURITY.md).)
 - **It never writes to their data.** The app's memory store is inspected
   **strictly read-only** (`mode=ro`); AIRE has its own separate evidence DB.
 - **Evidence stays local and owner-only.** The evidence DB and its sidecars are

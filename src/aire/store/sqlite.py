@@ -18,7 +18,7 @@ import re
 import sqlite3
 import threading
 import uuid
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -74,6 +74,16 @@ class VerificationResult:
     anchor_checked: bool = False
 
 
+# Called with the store path before reads. The background writer registers one
+# so a process reading a store it is also writing to sees its own pending events.
+_read_hooks: list[Callable[[str], None]] = []
+
+
+def register_read_hook(hook: Callable[[str], None]) -> None:
+    if hook not in _read_hooks:
+        _read_hooks.append(hook)
+
+
 def parse_anchor(anchor: str) -> tuple[int, str]:
     """Parse a recorded head of the form ``seq:hash``."""
     m = _ANCHOR.fullmatch(anchor.strip().lower())
@@ -122,6 +132,13 @@ class EvidenceStore:
     def close(self) -> None:
         self._conn.close()
 
+    def _before_read(self) -> None:
+        for hook in _read_hooks:
+            try:
+                hook(str(self.path))
+            except Exception:  # a hook must never break a read
+                pass
+
     def append(
         self,
         *,
@@ -130,8 +147,13 @@ class EvidenceStore:
         event_type: EventType,
         payload: dict[str, Any] | None = None,
         trace_id: str | None = None,
+        ts: str | None = None,
     ) -> AuditEvent:
-        """Seal an event onto the chain head and persist it atomically."""
+        """Seal an event onto the chain head and persist it atomically.
+
+        ``ts`` is when the event was observed; it defaults to now. The
+        background writer passes the time captured on the host thread.
+        """
         if self.read_only:
             raise RuntimeError("evidence store opened read-only; append is refused")
         with self._lock:
@@ -145,6 +167,7 @@ class EvidenceStore:
                 ).fetchone()
                 prev_hash = row[0] if row else GENESIS_HASH
                 event = AuditEvent(
+                    **({"ts": ts} if ts is not None else {}),
                     session_id=session_id,
                     trace_id=trace_id,
                     app=app,
@@ -179,6 +202,7 @@ class EvidenceStore:
         event_type: EventType | None = None,
     ) -> Iterator[AuditEvent]:
         """Yield stored events in chain order, optionally filtered."""
+        self._before_read()
         query = f"SELECT {_COLUMNS} FROM events"
         clauses, params = [], []
         if session_id is not None:
@@ -195,6 +219,7 @@ class EvidenceStore:
 
     def get_event(self, event_id: str) -> AuditEvent | None:
         """Return one event by id, or None (used by the dashboard drill-down)."""
+        self._before_read()
         row = self._conn.execute(
             f"SELECT {_COLUMNS} FROM events WHERE event_id = ?", (event_id,)
         ).fetchone()
@@ -209,6 +234,7 @@ class EvidenceStore:
         return row[0] if row else None
 
     def head_hash(self) -> str:
+        self._before_read()
         row = self._conn.execute("SELECT hash FROM events ORDER BY seq DESC LIMIT 1").fetchone()
         return row[0] if row else GENESIS_HASH
 
@@ -229,6 +255,7 @@ class EvidenceStore:
         ``anchors`` checks several recorded heads in the same single walk (used
         for checkpoint files).
         """
+        self._before_read()
         expected: dict[int, str] = {}
         for raw in [*anchors, *([expect_head] if expect_head is not None else [])]:
             seq, hash_ = parse_anchor(raw)

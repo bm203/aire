@@ -91,12 +91,30 @@ too**, so the audit conclusions are themselves in the tamper-evident chain.
 ## Fail-open sensor
 
 The cardinal rule: **the sensor can never break the host application.**
-Collectors call `Sensor.record()`, which builds the payload and writes to the
-store inside a guard. Any failure is swallowed and counted; the dropped count
-is flushed as a `sensor.dropped` event on the next successful write. Gaps in
-the evidence therefore become evidence: the completeness detector turns them
-into findings. Host-application errors always propagate untouched; AIRE only
-ever swallows its *own* failures.
+Collectors call `Sensor.record()`, which builds the payload inside a guard on
+the host thread (so the evidence captures the call as it happened, including
+its timestamp and session context) and hands it to a **background writer**
+(`aire.collectors._writer`): a bounded in-memory queue drained by one writer
+thread per process and store. The host thread never waits on the database.
+
+- **Drops are evidence.** A full queue, or a write that fails in the writer, is
+  counted and recorded as a `sensor.dropped` event (with the next event, on
+  `flush()`, or at shutdown). The completeness detector turns gaps into
+  findings. Every event is either written or counted.
+- **Fair across processes.** The writer takes a kernel file lock
+  (`<store>.lock`, 0600) around each append, so worker processes queue fairly;
+  SQLite's own busy handler polls and can starve a writer for seconds.
+- **Fork-safe.** Writers are keyed by process id and open their own
+  connection, so a forked worker gets a fresh writer.
+- **Durability trade-off.** Events still queued are lost if the process is
+  killed hard; normal shutdown flushes them (bounded).
+- **Read-your-writes.** Reads in the same process wait briefly for that
+  process's pending writes.
+
+`background=False` records synchronously on the calling thread (used by the
+offline importers and some tests). Host-application errors always propagate
+untouched; AIRE only ever swallows its *own* failures. Measured cost is in
+`evals/RESULTS.md`, "Recording cost to the host".
 
 ## The deep memory control
 

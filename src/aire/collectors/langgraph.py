@@ -48,10 +48,17 @@ def _thread_id(config: dict[str, Any] | None) -> str | None:
 class InstrumentedSaver(BaseCheckpointSaver):
     """Delegating checkpointer that emits audit events for memory operations."""
 
-    def __init__(self, inner: BaseCheckpointSaver, *, store: EvidenceStore, app: str) -> None:
+    def __init__(
+        self,
+        inner: BaseCheckpointSaver,
+        *,
+        store: EvidenceStore,
+        app: str,
+        background: bool = True,
+    ) -> None:
         super().__init__(serde=inner.serde)
         self._inner = inner
-        self._sensor = Sensor(store=store, app=app)
+        self._sensor = Sensor(store=store, app=app, background=background)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)

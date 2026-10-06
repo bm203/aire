@@ -30,9 +30,13 @@ from aire.core.events import EventType
 from aire.store import EvidenceStore
 
 
-def instrument(client: Any, *, store: EvidenceStore, app: str) -> Any:
-    """Wrap an ``anthropic.Anthropic`` (or compatible) client for observation."""
-    return _InstrumentedClient(client, Sensor(store=store, app=app))
+def instrument(client: Any, *, store: EvidenceStore, app: str, background: bool = True) -> Any:
+    """Wrap an ``anthropic.Anthropic`` (or compatible) client for observation.
+
+    ``background`` (default) writes evidence on a background thread so the
+    host's calls never wait on the database; see ``aire.collectors.base``.
+    """
+    return _InstrumentedClient(client, Sensor(store=store, app=app, background=background))
 
 
 class _InstrumentedClient:

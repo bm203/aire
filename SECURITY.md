@@ -6,9 +6,10 @@ constraint at every level, not a feature.
 ## Design commitments
 
 - **Observe-only, fail-open sensor.** AIRE never transforms, blocks, or
-  redacts host-application traffic. Collector failures are swallowed,
-  counted, and surfaced as `sensor.dropped` evidence, never as exceptions
-  in the host app.
+  redacts host-application traffic. Evidence is written by a background
+  thread from a bounded queue, so the host never waits on the store. Collector
+  failures and queue overflow are swallowed, counted, and surfaced as
+  `sensor.dropped` evidence, never as exceptions in the host app.
 - **Tamper-evident evidence, within a stated limit.** The evidence log is
   append-only (enforced by database triggers) and hash-chained (each event
   carries the previous event's SHA-256). `aire verify` detects and localizes
@@ -61,7 +62,8 @@ constraint at every level, not a feature.
 | Removal of events after the last checkpoint | Not detected until the next checkpoint; the checkpoint interval is the exposure window |
 | Compromised host at recording time (fabricated or suppressed events) | Out of scope: evidence is only as trustworthy as the host that recorded it. Imported coding-agent logs carry the same limit for the log's source |
 | Adversarial content in prompts/tool results (injection, DoS payloads) | Bounded scans, ReDoS-safe patterns, detection out-of-band of the request path |
-| AIRE breaking or degrading the monitored app | Fail-open sensor, no inline transformation, host errors propagate untouched |
+| AIRE breaking or degrading the monitored app | Fail-open sensor, no inline transformation, host errors propagate untouched; writes on a background thread from a bounded queue, overflow counted as `sensor.dropped` (measured host cost in `evals/RESULTS.md`) |
+| Evidence lost on a hard crash | Events still in the background queue (typically milliseconds' worth) are lost if the process is killed hard; normal shutdown flushes them. Use `background=False` where losing any event is worse than adding write latency to the host |
 | AIRE corrupting the host's memory store during audit | Read-only connections, enforced by SQLite |
 | Evidence leaking to other local users | 0600 file permissions on DB + sidecars |
 | PII amplification through findings | Findings carry types/offsets/pointers, not values |

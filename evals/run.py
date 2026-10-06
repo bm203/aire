@@ -91,6 +91,8 @@ def _run_concurrency() -> dict:
         "environment": concurrency.environment(),
         "call_overhead": concurrency.measure_call_overhead(),
         "writers": concurrency.measure_concurrent_writers(),
+        "hosts": concurrency.measure_concurrent_hosts(),
+        "overload": concurrency.measure_overload(),
     }
 
 
@@ -228,16 +230,43 @@ def to_markdown(results: dict) -> str:
             f"SQLite {env['sqlite']}. Local disk. Numbers are machine-specific.",
             "",
             "Instrumented vs. bare client call (a fake client that does no work, so the "
-            f"difference is AIRE's alone; {call['calls']} calls, "
-            f"{call['events_recorded']} events). Median / p95 / p99 / max, ms:",
+            f"difference is AIRE's alone; {call['calls']} calls, two events each). "
+            "Median / p95 / p99 / max, ms:",
             "",
             f"- Bare call: {_lat(call['bare_call'])}",
-            f"- Instrumented call (request + response recorded): "
-            f"{_lat(call['instrumented_call'])}",
+            f"- Instrumented, background writer (default): "
+            f"{_lat(call['instrumented_background'])}",
+            f"- Instrumented, synchronous: {_lat(call['instrumented_synchronous'])}",
             "",
-            "Concurrent writer processes, each appending ~1 KB events as fast as it can "
-            "(a stress upper bound: a real application waits on an LLM call between "
-            "events). Append latency median / p95 / p99 / max, ms:",
+            "What the host thread waits for when W worker processes record ~1 KB events "
+            "as fast as they can through the default background sensor (a stress upper "
+            "bound: a real application waits on an LLM call between events). "
+            "Median / p95 / p99 / max, ms:",
+            "",
+            "| Workers | Events | Written | Dropped (counted) | Chain verified | Host latency |",
+            "|---|---|---|---|---|---|",
+        ]
+        for h in cc["hosts"].values():
+            lines.append(
+                f"| {h['writers']} | {h['events_attempted']} | {h['events_written']} | "
+                f"{h['dropped']} | {'yes' if h['chain_ok'] else 'NO'} | "
+                f"{_lat(h['host_latency'])} |"
+            )
+        ov2 = cc["overload"]
+        lines += [
+            "",
+            f"Overload: {ov2['events_attempted']} events flooded into one sensor with a "
+            f"{ov2['max_queue']}-event queue, faster than the writer can drain it. "
+            f"Written: {ov2['events_written']}; dropped and recorded as `sensor.dropped` "
+            f"evidence: {ov2['dropped_recorded_as_evidence']}; dropped, pending a notice: "
+            f"{ov2['dropped_pending_notice']}; every event accounted for: "
+            f"{'yes' if ov2['accounted'] else 'NO'}; chain verified: "
+            f"{'yes' if ov2['chain_ok'] else 'NO'}; host latency "
+            f"{_lat(ov2['host_latency'])} ms.",
+            "",
+            "Raw store appends by W writer processes without the background writer's "
+            "fair lock (what a synchronous sensor waits for). Append latency "
+            "median / p95 / p99 / max, ms:",
             "",
             "| Writers | Events | Write failures | Chain verified | Latency | Events/s |",
             "|---|---|---|---|---|---|",

@@ -98,9 +98,13 @@ What makes it defensible under scrutiny:
 
 Policy evaluation and detection run **out-of-band** over the stored evidence,
 never inline in the request path, so detection cost is a measurable audit
-metric, not a latency tax on the host application. Recording itself is a
-synchronous local write, about 1 ms per event in the overhead measurement in
-[`evals/RESULTS.md`](evals/RESULTS.md).
+metric, not a latency tax on the host application. Recording itself happens
+on a background writer thread: the host thread only builds the event and
+queues it, which measured about 0.03 ms per instrumented call, with no host
+wait above 0.2 ms even with eight worker processes recording flat out
+([`evals/RESULTS.md`](evals/RESULTS.md)). If recording cannot keep up, events
+are dropped and counted as `sensor.dropped` evidence rather than slowing the
+host; events still queued are lost only if the process is killed hard.
 
 ---
 

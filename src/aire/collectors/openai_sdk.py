@@ -43,15 +43,24 @@ from aire.store import EvidenceStore
 
 
 def instrument(
-    client: Any, *, store: EvidenceStore, app: str, system: str = "openai"
+    client: Any,
+    *,
+    store: EvidenceStore,
+    app: str,
+    system: str = "openai",
+    background: bool = True,
 ) -> Any:
     """Wrap an ``openai.OpenAI`` / ``openai.AzureOpenAI`` (or compatible) client.
 
     ``system`` is recorded as ``gen_ai.system`` on every event; pass e.g.
     ``system="azure.ai.openai"`` when instrumenting an Azure client so the
-    evidence reflects the actual backend.
+    evidence reflects the actual backend. ``background`` (default) writes
+    evidence on a background thread so the host's calls never wait on the
+    database; see ``aire.collectors.base``.
     """
-    return _InstrumentedClient(client, Sensor(store=store, app=app), system)
+    return _InstrumentedClient(
+        client, Sensor(store=store, app=app, background=background), system
+    )
 
 
 class _InstrumentedClient:

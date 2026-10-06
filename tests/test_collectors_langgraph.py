@@ -95,7 +95,10 @@ class TestDelete:
 
 
 class TestFailOpen:
-    def test_store_failure_does_not_break_memory_ops(self, saver, store):
+    def test_store_failure_does_not_break_memory_ops(self, store):
+        # Synchronous mode: the test breaks this store object's append directly.
+        saver = InstrumentedSaver(MemorySaver(), store=store, app="t", background=False)
+
         def broken_append(**kwargs):
             raise RuntimeError("disk on fire")
 

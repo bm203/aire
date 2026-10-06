@@ -232,7 +232,8 @@ class TestFailOpen:
         assert response is fake.chat.completions.response
 
     def test_dropped_events_flush_when_store_recovers(self, store):
-        client = instrument(FakeClient(), store=store, app="t")
+        # Synchronous mode: the test breaks this store object's append directly.
+        client = instrument(FakeClient(), store=store, app="t", background=False)
         sensor = client.chat.completions._sensor
 
         real_append = store.append

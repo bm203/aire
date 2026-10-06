@@ -1,10 +1,16 @@
 """Fail-open recording core shared by all collectors.
 
 The cardinal rule: **the sensor can never break the host application.**
-Payload construction and store writes happen inside a guard; any failure is
-swallowed and counted. The dropped count is flushed as a ``sensor.dropped``
-event on the next successful write, so gaps in the evidence are themselves
-evidence (the completeness detector turns them into findings).
+Payload construction happens inside a guard; any failure is swallowed and
+counted. The dropped count is flushed as a ``sensor.dropped`` event on the next
+successful write, so gaps in the evidence are themselves evidence (the
+completeness detector turns them into findings).
+
+By default (``background=True``) the store write happens on a background
+writer thread (``aire.collectors._writer``): the host thread only builds the
+payload and puts it on a bounded queue, so it never waits on the database. A
+full queue is a counted drop. ``background=False`` writes synchronously on the
+calling thread, which is what offline importers and some tests want.
 """
 
 from __future__ import annotations
@@ -12,8 +18,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from aire.collectors import _writer
 from aire.collectors.context import current_session_id, current_trace_id
-from aire.core.events import EventType
+from aire.core.events import EventType, _utcnow_iso
 from aire.store import EvidenceStore
 
 UNATTRIBUTED = "unattributed"
@@ -38,10 +45,28 @@ def jsonable(obj: Any) -> Any:
 class Sensor:
     """Records events to an :class:`EvidenceStore`, guaranteed non-raising."""
 
-    def __init__(self, *, store: EvidenceStore, app: str) -> None:
+    def __init__(
+        self,
+        *,
+        store: EvidenceStore,
+        app: str,
+        background: bool = True,
+        max_queue: int = _writer.DEFAULT_MAX_QUEUE,
+    ) -> None:
         self.store = store
         self.app = app
         self.dropped = 0
+        self._writer: _writer.BackgroundWriter | None = None
+        # Background writing needs a real, writable store (the writer opens its
+        # own connection to the same file). Anything else, including duck-typed
+        # test doubles, records synchronously. Construction must never raise.
+        if background and isinstance(store, EvidenceStore) and not store.read_only:
+            try:
+                self._writer = _writer.get_writer(store.path, max_queue)
+                _writer.register_drop_reporter(self)
+            except Exception:
+                self._writer = None
+        self._last_session = UNATTRIBUTED
 
     def record(
         self,
@@ -57,7 +82,19 @@ class Sensor:
         """
         try:
             sid = session_id or current_session_id() or UNATTRIBUTED
+            self._last_session = sid
             payload = payload_fn()
+            event = {
+                "session_id": sid,
+                "trace_id": current_trace_id(),
+                "app": self.app,
+                "event_type": event_type,
+                "payload": payload,
+                "ts": _utcnow_iso(),  # when it happened, not when it was written
+            }
+            if self._writer is not None:
+                self._submit(event)
+                return
             if self.dropped:
                 pending, self.dropped = self.dropped, 0
                 try:
@@ -69,12 +106,43 @@ class Sensor:
                     )
                 except Exception:
                     self.dropped += pending  # flush failed; keep counting
-            self.store.append(
-                session_id=sid,
-                trace_id=current_trace_id(),
-                app=self.app,
-                event_type=event_type,
-                payload=payload,
-            )
+            self.store.append(**event)
         except Exception:
             self.dropped += 1
+
+    def _submit(self, event: dict[str, Any]) -> None:
+        """Hand an event to the background writer without ever blocking."""
+        if self.dropped:
+            notice = {**event, "trace_id": None, "event_type": EventType.SENSOR_DROPPED,
+                      "payload": {"count": self.dropped}}
+            if self._writer.submit(notice):
+                self.dropped = 0
+        if not self._writer.submit(event):
+            self.dropped += 1
+
+    def report_drops(self) -> None:
+        """Turn a pending drop count into a ``sensor.dropped`` event now.
+
+        Drops are normally reported with the next event; without this, a burst
+        of drops at the end of a run would live only in memory and vanish.
+        Called by ``flush`` and at interpreter shutdown.
+        """
+        if self._writer is None or not self.dropped:
+            return
+        notice = {"session_id": self._last_session, "trace_id": None, "app": self.app,
+                  "event_type": EventType.SENSOR_DROPPED, "payload": {"count": self.dropped},
+                  "ts": _utcnow_iso()}
+        if self._writer.submit(notice):
+            self.dropped = 0
+
+    def flush(self, timeout: float = _writer.READ_FLUSH_SECONDS) -> bool:
+        """Report pending drops, then wait for queued events to be written.
+
+        A no-op in synchronous mode.
+        """
+        if self._writer is None:
+            return True
+        self.report_drops()
+        if self.dropped and self._writer.flush(timeout):
+            self.report_drops()  # the queue was full a moment ago; it has room now
+        return self._writer.flush(timeout)

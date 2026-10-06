@@ -193,8 +193,18 @@ class TestConcurrency:
         from evals import concurrency
 
         out = concurrency.measure_call_overhead(n=20)
-        assert out["events_recorded"] == 40
-        assert out["instrumented_call"]["count"] == 20
+        assert out["events_recorded_background"] == 40
+        assert out["events_recorded_synchronous"] == 40
+        assert out["instrumented_background"]["count"] == 20
+
+    def test_concurrent_hosts_and_overload_account_for_every_event(self):
+        from evals import concurrency
+
+        h = concurrency.measure_concurrent_hosts(writers=(2,), events_per_writer=20)["2"]
+        assert h["events_written"] + h["dropped"] == 40 and h["chain_ok"]
+        o = concurrency.measure_overload(events=3000, max_queue=50)
+        assert o["accounted"] and o["chain_ok"]
+        assert o["dropped_recorded_as_evidence"] + o["dropped_pending_notice"] > 0
 
 
 class TestRunOrchestrator:
