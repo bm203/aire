@@ -275,7 +275,7 @@ that check an application's claims against the actual system state.
 ## Documentation
 
 - [Architecture](docs/architecture.md): modules, event flow, the hash chain.
-- [Pilot guide](docs/pilot-guide.md): running AIRE on a real Anthropic + LangGraph app.
+- [Pilot guide](docs/pilot-guide.md): running a pilot on a real AI application: data flow, deployment, data handling, security assumptions, success criteria, and the steps.
 - [Dashboard](docs/dashboard.md): the local read-only audit viewer.
 - [Policy authoring](docs/policy-authoring.md): writing YAML/CEL policies.
 - [Framework mappings](docs/framework-mappings.md): control citations.

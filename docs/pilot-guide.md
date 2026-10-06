@@ -1,12 +1,19 @@
-# Pilot guide: running AIRE on a real Anthropic + LangGraph app
+# Pilot guide: running AIRE on a real AI application
 
 This is the operator's guide for a **pilot**: putting AIRE onto a real AI
-application (built on the Anthropic SDK with LangGraph memory), capturing a few
-days of genuine activity, and producing an audit report the app's owners can
-read. It complements the [README quickstart](../README.md#quickstart): the
-quickstart shows the mechanics; this guide is about running them *on someone
-else's production/staging app*, and the assurances their security team will
-ask for first.
+application, capturing genuine activity for an agreed window, and producing an
+audit report the app's owners can read. The steps below use an app built on the
+Anthropic SDK with LangGraph memory; the OpenAI / Azure OpenAI collector and the
+coding-agent importers (Claude Code, Codex) slot into the same flow. It
+complements the [README quickstart](../README.md#quickstart): the quickstart
+shows the mechanics; this guide is about running them *on someone else's
+production/staging app*, and what their security team will ask first.
+
+Sections: [pilot at a glance](#pilot-at-a-glance) ·
+[data flow](#data-flow) · [deployment](#deployment) ·
+[data handling](#data-handling) ·
+[security assumptions and limitations](#security-assumptions-and-limitations) ·
+[success criteria](#success-criteria) · then the steps (0 to 4).
 
 > **What a pilot proves.** Not "the app is compliant." It proves AIRE can sit
 > in front of a real system and produce *verifiable evidence*: findings that
@@ -40,14 +47,137 @@ Because the evidence contains real prompts and any personal data the app
 handled, **treat the evidence DB as sensitive**: it is exactly as sensitive as
 the app's own logs. Agree up front where it lives and who can read it.
 
+## Pilot at a glance
+
+- **One AI application**, ideally an agent with LLM calls, retrieval, tool use,
+  sensitive data, and (if available) persistent memory.
+- **Three assurance questions**, agreed up front, for example:
+  1. *Data:* did personal or sensitive data enter or leave the AI workflow
+     unexpectedly?
+  2. *Tool use:* did the agent invoke tools outside the approved policy?
+  3. *Memory:* when deletion was requested, was the data actually removed?
+- **One evidence report**: each finding traced to its events, their hashes, the
+  policy evaluated, and the governance control it relates to, plus per-control
+  coverage (passed / failed / not evaluated / no evidence).
+- **A pilot tests evidence utility, not compliance**: does AIRE produce
+  evidence the organization's existing tooling cannot easily produce?
+
+## Data flow
+
+```
+ AI application process (unchanged)
+   │  wrapped SDK client / checkpointer: builds each event on the app's thread,
+   │  queues it in memory (never waits on disk)
+   ▼
+ background writer thread ──► evidence.db (+ -wal, -shm, .lock)    local disk, 0600
+                                      │
+             offline, on the same host or a copy of the file:
+             aire evaluate / aire detect  (append findings to the same chain)
+                                      │
+             aire report ──► audit.html / .md / .json (0600, self-contained)
+             aire dashboard ──► 127.0.0.1 only, read-only
+             aire checkpoint ──► customer witness (SIEM via syslog, audit share)
+                                 carries store id, sequence number, head hash,
+                                 timestamp, optional signature; no content
+```
+
+- **Nothing leaves the environment** unless the organization sends it. AIRE
+  makes no outbound connections; the only network output is checkpoints, to a
+  destination the organization chooses, and they contain hashes, not content.
+- The app's own memory store is opened **read-only** for the deletion control.
+- Coding-agent pilots skip the wrapper: `aire import-claude-code` /
+  `aire import-codex` read session logs the agent already writes locally.
+
+## Deployment
+
+- **Where:** inside the app's existing Python environment (Python 3.12+). No
+  new service, port, container, or database server. A dedicated directory for
+  the evidence file is enough.
+- **Install:** `pip install "aire[...]"` with the extras for the app's stack
+  (`anthropic`, `openai`, `langgraph`, `pii`, `signing`, `dashboard`); a
+  hash-pinned `requirements.lock` is available for verified installs.
+- **Multi-worker servers:** all worker processes can share one evidence file;
+  each process gets its own background writer, and writers take a fair file
+  lock. Measured with eight processes recording flat out: no host wait above
+  0.2 ms, every event written, chain intact (`evals/RESULTS.md`).
+- **Shutdown:** normal shutdown flushes queued events. A hard kill (`kill -9`,
+  power loss) loses events still queued, typically milliseconds' worth. Pass
+  `background=False` to `instrument(...)` where losing any event is worse than
+  adding about 2 ms of write latency to the app.
+- **Disk:** evidence grows with the size of the prompts, responses, and tool
+  output the app produces. Check the file size after the first day and agree a
+  ceiling.
+- **Removal:** delete the wrapper lines; the app runs exactly as before. The
+  evidence file stays until it is deleted under the agreed retention.
+
+## Data handling
+
+- **What is stored:** prompts, retrieved context, tool calls and results,
+  memory operations, and model responses, as the app produced them. Findings
+  store entity types, offsets, and pointers, never copies of personal data.
+- **Sensitivity:** treat the evidence file like the app's own logs, including
+  under the organization's data protection rules. Whether the pilot needs a
+  data protection review, and on which legal basis evidence is kept, is the
+  organization's decision; agree it before step 1.
+- **Retention and erasure:** agree a retention period and an end-of-pilot
+  action. The evidence log is append-only, so v1 has no per-record erasure:
+  erasure means deleting the evidence file (and its sidecars). Plan the pilot
+  window and data scope with that in mind.
+- **Access:** owner-only file permissions by default; decide who else may read
+  the file, the reports, and the dashboard.
+- **Language:** the PII detector is tuned for English text. On German text it
+  produces many false positives and misses German identifiers (tax ID, social
+  security number), as measured on synthetic German business text. Treat PII
+  findings on German-language traffic as indicative only.
+
+## Security assumptions and limitations
+
+The full threat model is in [SECURITY.md](../SECURITY.md). For a pilot, the
+points that matter:
+
+- **The host is trusted at recording time.** AIRE records what the app did; a
+  compromised host can fabricate or suppress events before they are recorded.
+- **Integrity has a stated limit.** The hash chain proves internal
+  consistency. Detecting a deliberate rewrite needs a head recorded outside the
+  writer's reach: checkpoints sent to a witness the app team does not control
+  and/or signed with a key the app's user cannot read. Events after the latest
+  checkpoint are unprotected until the next one.
+- **Imported coding-agent logs** prove nothing changed after import, not that
+  the log itself is faithful.
+- **Detection is measured, not perfect.** Injection detection is heuristic
+  (evaluated on AgentDojo); PII detection depends on language and text type.
+  Every result has an evidence pointer so a reviewer can check it.
+- **"Passed" in control coverage** means the configured checks evaluated
+  recorded events and found no violation. It is not a statement that the
+  control is satisfied.
+- **Not covered in v1:** enforcement (AIRE never blocks), per-record erasure,
+  HSM/KMS-held signing keys, trusted timestamps.
+
+## Success criteria
+
+Agree targets before the pilot starts; each is measurable from the evidence or
+the organization's own monitoring:
+
+| Criterion | How it is measured | Suggested target |
+|---|---|---|
+| Events captured | Events written vs. events counted as dropped (`sensor.dropped` evidence, completeness detector) | 100% written or counted; drops agreed in advance |
+| Evidence integrity | `aire verify --checkpoints ... --pubkey ... --max-gap N` against the witness's copy | Passes for the whole window |
+| No impact on the app | The app's own latency and error metrics, before vs. during the pilot | No measurable change |
+| Policy violations found | Agreed test scenarios (e.g. a disallowed tool call) run during the window | Every scenario detected, with an evidence pointer |
+| Controls addressed | Control coverage section of the report, reviewed with the control owners | Each agreed control passed, failed, or explained |
+| Memory deletion verified | Deletion control on a planned deletion request (LangGraph apps) | Claim and actual state compared, result evidenced |
+| Data stays local | Network configuration review | No outbound traffic from AIRE |
+| Evidence utility | Review with the app owners and auditors | At least one finding worth acting on, plus a list of disputed results |
+
 ## Step 0: Install (in the app's environment)
 
 ```bash
-pip install "aire[anthropic,langgraph,pii]"
+pip install "aire[anthropic,langgraph,pii]"   # or openai instead of anthropic
 python -m spacy download en_core_web_sm   # for the PII detector
 ```
 
-`anthropic` + `langgraph` are the collectors; `pii` adds the Presidio detector.
+`anthropic` (or `openai`, which also covers Azure OpenAI) + `langgraph` are the
+collectors; `pii` adds the Presidio detector.
 No API key is needed for analysis: only the app itself already has one.
 
 ## Step 1: Instrument the app (≈4 lines)
@@ -85,10 +215,11 @@ working example of this exact wiring.
 
 ## Step 2: Let it run
 
-Run the app normally against real traffic for the pilot window (a few hours to
-a few days). AIRE records prompts, retrieved context, tool calls, memory
-operations, and model responses into `evidence.db` as they happen. There is
-nothing to babysit; the app behaves identically whether AIRE is there or not.
+Run the app normally against real traffic for the pilot window. AIRE records
+prompts, retrieved context, tool calls, memory operations, and model responses
+into `evidence.db` as they happen. Schedule `aire checkpoint` to the agreed
+witness (see step 4) from day one. Run the agreed test scenarios during the
+window so the success criteria can be checked.
 
 ## Step 3: Analyse the evidence (offline, over the store)
 
