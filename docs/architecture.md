@@ -31,6 +31,7 @@ stored evidence, never in the host application's request path.
 | `aire.core.types` | Shared `Severity` enum. |
 | `aire.store` | `EvidenceStore`: append-only (trigger-enforced), hash-chained SQLite log; `verify()` walks and localizes chain breaks. |
 | `aire.collectors` | Observe-only, fail-open instrumentation: `Sensor` (recording core), `anthropic_sdk.instrument`, `openai_sdk.instrument` (covers Azure OpenAI too), `langgraph.InstrumentedSaver`, and `session()` attribution. |
+| `aire.collectors` (importers) | Offline, fail-loud import of coding-agent session logs: `claude_code.import_transcript` and `codex.import_rollout`. Produces *imported* evidence: the chain covers what happened after ingestion, not the log's own integrity. |
 | `aire.policy` | YAML policy surface → `PolicyBackend` (CEL) → `PolicyEngine`; the builtin starter pack. |
 | `aire.detectors` | `Detector` interface + `DetectorRunner`; PII (Presidio), prompt injection, completeness, and the deep memory retention/deletion control. |
 | `aire.mappings` | Framework citation YAML (EU AI Act / ISO 42001 / NIST AI RMF / OWASP) and ref resolution. |

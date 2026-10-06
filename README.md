@@ -17,7 +17,7 @@ detected condition, the append-only hash-chained event(s) that prove it, and
 the control it maps to. AIRE never asserts "this system is compliant"; it
 gives auditors verifiable evidence and leaves judgment to them.
 
-> **Status:** v1 feature-complete and tested (189 tests). Apache-2.0.
+> **Status:** v1 feature-complete and tested (210 tests). Apache-2.0.
 > Not yet published to a package index.
 
 ---
@@ -169,18 +169,29 @@ resources. See [`docs/dashboard.md`](docs/dashboard.md).
 
 Coding agents run shell commands, edit files, and fetch web content on developer
 machines, and most organisations cannot say what one actually did. Claude Code
-writes a JSONL transcript per session, so the evidence already exists locally:
+and OpenAI Codex both write a JSONL log per session, so the evidence already
+exists locally:
 
 ```bash
+# Claude Code
 aire import-claude-code ~/.claude/projects/<project>/<session>.jsonl evidence.db
 aire evaluate evidence.db -p examples/policies/coding_agent.yaml
-aire detect   evidence.db
+
+# OpenAI Codex
+aire import-codex ~/.codex/sessions/YYYY/MM/DD/rollout-<...>.jsonl evidence.db
+aire evaluate evidence.db -p examples/policies/codex.yaml
+
+aire detect evidence.db
 ```
 
+Both importers produce the same event shapes, so detectors, policies and reports
+treat the two agents identically; only the tool names in the policy packs differ.
+
 This is *imported* evidence rather than observed: the chain proves nothing
-changed after ingestion, not that the transcript itself is faithful. The
-transcript format is internal to Claude Code and carries no stability guarantee,
-so unknown records are skipped and counted rather than treated as errors.
+changed after ingestion, not that the log itself is faithful. Both log formats
+are internal to their tools and carry no stability guarantee, so unknown records
+are skipped and counted rather than treated as errors. Codex compresses older
+sessions to `.jsonl.zst`; decompress those with `zstd -d` before importing.
 
 Findings map to controls in
 [`docs/framework-mappings.md`](docs/framework-mappings.md) (generated from the

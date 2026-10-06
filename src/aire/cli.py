@@ -237,6 +237,56 @@ def import_claude_code(
         )
 
 
+@app.command(name="import-codex")
+def import_codex(
+    rollout: Annotated[Path, typer.Argument(help="Codex session rollout (.jsonl)")],
+    db: Annotated[Path, typer.Argument(help="Evidence store to append to (created if absent)")],
+    app_name: Annotated[
+        str | None,
+        typer.Option("--app", help="Application name recorded on the events"),
+    ] = None,
+    max_payload_chars: Annotated[
+        int,
+        typer.Option("--max-payload-chars", help="Cap stored tool payloads at this size"),
+    ] = 20_000,
+) -> None:
+    """Import an OpenAI Codex session rollout as audit evidence.
+
+    Codex records each session as JSONL under
+    ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl. This maps it onto AIRE's event
+    model; run `aire evaluate` and `aire detect` afterwards to analyse it.
+
+    Like `import-claude-code`, this is *imported* evidence: the hash chain
+    proves nothing changed after ingestion, not that the rollout is faithful.
+    Compressed rollouts (.jsonl.zst) must be decompressed first.
+    """
+    from aire.collectors.codex import import_rollout
+    from aire.store import EvidenceStore
+
+    if not rollout.exists():
+        typer.secho(f"error: no such rollout: {rollout}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2)
+
+    store = EvidenceStore(db)
+    try:
+        stats = import_rollout(
+            rollout, store=store, app=app_name, max_payload_chars=max_payload_chars
+        )
+    except ValueError as exc:
+        typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+    finally:
+        store.close()
+
+    typer.echo(f"imported {stats.summary()}")
+    if stats.malformed_lines:
+        typer.secho(
+            f"note: {stats.malformed_lines} line(s) could not be parsed and were skipped",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
+
 @app.command()
 def evaluate(
     db: Annotated[Path, typer.Argument(help="Path to the evidence store (SQLite file)")],

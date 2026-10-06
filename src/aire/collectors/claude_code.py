@@ -35,47 +35,28 @@ treated as errors, so a format change degrades coverage instead of breaking.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from aire.collectors._transcript import (
+    DEFAULT_MAX_PAYLOAD_CHARS,
+    ImportStats,
+    flatten,
+    read_jsonl,
+)
+from aire.collectors._transcript import clip as _clip
+from aire.collectors._transcript import clip_obj as _clip_obj
 from aire.core.events import EventType
 from aire.store import EvidenceStore
 
-DEFAULT_APP = "claude-code"
+__all__ = ["DEFAULT_APP", "DEFAULT_MAX_PAYLOAD_CHARS", "ImportStats", "import_transcript"]
 
-# Tool payloads carry file contents and command output, which are unbounded.
-# Cap what is stored so one session cannot balloon the evidence database or
-# stall the detectors; truncation is recorded in the payload.
-DEFAULT_MAX_PAYLOAD_CHARS = 20_000
+DEFAULT_APP = "claude-code"
 
 # Record types that carry agent behaviour. Everything else in the transcript is
 # UI or bookkeeping state (mode changes, title generation, file snapshots).
 _BEHAVIOUR_TYPES = frozenset({"user", "assistant"})
-
-
-@dataclass
-class ImportStats:
-    """What the import saw, so coverage gaps are visible rather than implied."""
-
-    records_read: int = 0
-    events_written: int = 0
-    malformed_lines: int = 0
-    skipped_by_type: dict[str, int] = field(default_factory=dict)
-    truncated_payloads: int = 0
-    sessions: set[str] = field(default_factory=set)
-
-    def summary(self) -> str:
-        skipped = sum(self.skipped_by_type.values())
-        return (
-            f"{self.events_written} event(s) from {self.records_read} record(s) "
-            f"across {len(self.sessions)} session(s); "
-            f"{skipped} non-behaviour record(s) skipped, "
-            f"{self.malformed_lines} malformed line(s), "
-            f"{self.truncated_payloads} payload(s) truncated"
-        )
 
 
 def import_transcript(
@@ -102,10 +83,10 @@ def import_transcript(
     # not-evaluated rather than silently passing.
     session_models: dict[str, str] = {}
 
-    for record in _records(path, stats):
+    for record in read_jsonl(path, stats):
         rtype = record.get("type")
         if rtype not in _BEHAVIOUR_TYPES:
-            stats.skipped_by_type[str(rtype)] = stats.skipped_by_type.get(str(rtype), 0) + 1
+            stats.skip(str(rtype))
             continue
 
         session_id = str(record.get("sessionId") or path.stem)
@@ -124,24 +105,6 @@ def import_transcript(
             stats.events_written += 1
 
     return stats
-
-
-def _records(path: Path, stats: ImportStats) -> Iterator[dict[str, Any]]:
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                stats.malformed_lines += 1
-                continue
-            if isinstance(record, dict):
-                stats.records_read += 1
-                yield record
-            else:
-                stats.malformed_lines += 1
 
 
 def _events_for(
@@ -181,7 +144,7 @@ def _events_for(
                         {
                             "tool_use_id": tool_use_id,
                             "gen_ai.tool.name": tool_names.get(str(tool_use_id)),
-                            "content": _clip(_flatten(block.get("content")), max_chars, stats),
+                            "content": _clip(flatten(block.get("content")), max_chars, stats),
                             "is_error": bool(block.get("is_error", False)),
                             **origin,
                         },
@@ -253,36 +216,3 @@ def _origin(record: dict[str, Any]) -> dict[str, Any]:
         "source.cwd": record.get("cwd"),
         "source.git_branch": record.get("gitBranch"),
     }
-
-
-def _flatten(content: Any) -> str:
-    """Tool result content is a string or a list of blocks; render it as text."""
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts = []
-        for block in content:
-            if isinstance(block, dict):
-                parts.append(str(block.get("text", block.get("type", ""))))
-            else:
-                parts.append(str(block))
-        return "\n".join(parts)
-    return str(content)
-
-
-def _clip(text: str, max_chars: int, stats: ImportStats) -> str:
-    if len(text) <= max_chars:
-        return text
-    stats.truncated_payloads += 1
-    return text[:max_chars] + f"\n…[truncated, {len(text) - max_chars} more characters]"
-
-
-def _clip_obj(obj: Any, max_chars: int, stats: ImportStats) -> Any:
-    """Bound a tool input without destroying its structure where possible."""
-    if isinstance(obj, dict):
-        return {k: _clip(v, max_chars, stats) if isinstance(v, str) else v for k, v in obj.items()}
-    if isinstance(obj, str):
-        return _clip(obj, max_chars, stats)
-    return obj

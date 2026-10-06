@@ -1,0 +1,62 @@
+# Example policies for auditing an OpenAI Codex session imported with
+# `aire import-codex`. Same intent as coding_agent.yaml, with Codex's tool
+# names (taken from the open-source Codex tool registry, Oct 2026).
+#
+#   aire evaluate evidence.db -p examples/policies/codex.yaml
+#
+# Tune the lists to your organisation. These are defaults to argue with, not
+# settled policy. MCP and plugin tools appear under their own names and are
+# flagged by the allowlist until you add them, which is deliberate: an
+# unreviewed tool is worth a look.
+
+policies:
+  - id: CODEX_TOOL_ALLOWLIST
+    description: >-
+      The coding agent may only invoke tools on the approved allowlist.
+    severity: high
+    applies_to: [tool.call]
+    params:
+      allowed_tools:
+        - exec_command
+        - write_stdin
+        - apply_patch
+        - update_plan
+        - view_image
+        - local_shell
+        - web_search
+    violation: '!(payload["gen_ai.tool.name"] in params.allowed_tools)'
+    framework_refs: ["OWASP-LLM:LLM06", "EU-AI-ACT:Art.14", "NIST-AI-RMF:MANAGE-3.1"]
+
+  - id: CODEX_EXTERNAL_CONTENT_FETCHED
+    description: >-
+      The agent pulled external web content into its context, which is the
+      primary indirect prompt-injection path for a tool-using agent. Review
+      alongside any injection findings on the same session.
+    severity: medium
+    applies_to: [tool.call]
+    params:
+      network_tools: ["web_search"]
+    violation: 'payload["gen_ai.tool.name"] in params.network_tools'
+    framework_refs: ["OWASP-LLM:LLM01", "NIST-AI-RMF:MEASURE-2.7"]
+
+  - id: CODEX_PERMISSION_ESCALATION
+    description: >-
+      The agent asked for permissions beyond its sandbox. Each request is a
+      point where a human decided to widen what the agent may do.
+    severity: medium
+    applies_to: [tool.call]
+    violation: 'payload["gen_ai.tool.name"] == "request_permissions"'
+    framework_refs: ["EU-AI-ACT:Art.14", "NIST-AI-RMF:MANAGE-3.1"]
+
+  - id: CODEX_MODEL_INVENTORY
+    description: >-
+      Only models on the organisation's approved inventory may be used by
+      development tooling. Replace the placeholder with your approved model
+      ids; until then every request is flagged.
+    severity: medium
+    applies_to: [llm.request]
+    params:
+      approved_models:
+        - replace-with-approved-model-id
+    violation: '!(payload["gen_ai.request.model"] in params.approved_models)'
+    framework_refs: ["EU-AI-ACT:Art.12", "ISO-42001:A.6.2.8"]
