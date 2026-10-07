@@ -98,7 +98,12 @@ on every push and pull request:
    verified environment.
 
 Handling a `pip-audit` failure: prefer bumping the affected package to a
-patched version (respecting the cooldown). If no fix exists yet, an advisory
+patched version (respecting the cooldown). Two practical rules learned
+the hard way: **bump `pip` and `pip-tools` together** (pip-tools imports pip
+internals, so a pip release can break `pip-compile`, which then fails CI's
+lock check rather than the audit), and **run `pip-compile` from an environment
+installed from the lock itself**, as CI does, not from a development venv that
+may have drifted. If no fix exists yet, an advisory
 may be temporarily ignored with `pip-audit --ignore-vuln <ID>` **plus a
 comment recording the advisory, the reason, and a review date**: never a
 silent suppression.
